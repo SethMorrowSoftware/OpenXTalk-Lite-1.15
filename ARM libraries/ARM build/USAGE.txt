@@ -1,0 +1,76 @@
+ARM BUILD SYSTEM - USAGE GUIDE
+===============================
+
+OVERVIEW:
+---------
+This system keeps ARM builds completely separate from Intel builds.
+Modified gyp files are stored here and copied into place only when needed.
+
+WORKFLOW:
+---------
+
+1. SETUP ARM BUILD ENVIRONMENT
+   cd "ARM libraries/ARM build/scripts"
+   ./setup-arm-build.sh
+   
+   This will:
+   - Backup original Intel gyp files
+   - Copy ARM-modified gyp files to source tree
+   
+2. BUILD ARM LIBRARIES
+   Use the build scripts in ARM Cairo/, ARM Skia/, etc.
+   
+   Example:
+   cd "ARM libraries/ARM Cairo"
+   ./build-cairo-arm64.sh
+   
+3. RESTORE INTEL BUILD (when done with ARM)
+   cd "ARM libraries/ARM build/scripts"
+   ./restore-intel-build.sh
+   
+   This will:
+   - Restore original Intel gyp files
+   - Remove ARM modifications
+
+CURRENT MODIFICATIONS:
+----------------------
+
+libcairo.gyp:
+  Location: ARM build/gyp-modified/libcairo.gyp
+  Changes:
+    - Excludes x86 SSE2/SSSE3/MMX code for ARM64
+    - Condition: 'OS != "mac" or target_arch == "arm64"'
+    - Excludes: pixman-sse2.c, pixman-ssse3.c, pixman-x86.c, pixman-mmx.c
+  
+  Why: These x86-specific SIMD files don't compile on ARM64
+
+ADDING NEW MODIFICATIONS:
+--------------------------
+
+To add a new modified gyp file:
+
+1. Copy original to ARM build/gyp-modified/
+   cp ../../thirdparty/libfoo/libfoo.gyp ARM\ build/gyp-modified/
+
+2. Edit the copy with ARM-specific changes
+   
+3. Update setup-arm-build.sh to copy your file:
+   cp "$ARM_BUILD_DIR/gyp-modified/libfoo.gyp" \
+      "$LIVECODE_ROOT/thirdparty/libfoo/libfoo.gyp"
+
+4. Update restore-intel-build.sh to restore it
+
+5. Document changes in this file
+
+SAFETY:
+-------
+- Original files are always backed up before modification
+- Intel build is never permanently changed
+- Easy to switch between ARM and Intel builds
+- All ARM modifications are version controlled
+
+CURRENT STATUS:
+---------------
+✓ libcairo.gyp - ARM-ready (x86 code excluded)
+☐ libskia.gyp - No modifications needed (already ARM-ready)
+☐ Other libraries - To be added as needed

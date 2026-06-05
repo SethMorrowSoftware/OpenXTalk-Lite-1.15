@@ -1,0 +1,44 @@
+ARM CAIRO BUILD INSTRUCTIONS
+============================
+
+PREREQUISITES:
+--------------
+1. ARM build environment must be set up first:
+   cd "../ARM build/scripts"
+   ./setup-arm-build.sh
+
+2. This installs the ARM-modified libcairo.gyp that excludes x86 SSE code
+
+BUILD STEPS:
+------------
+1. Ensure ARM build environment is active (see above)
+
+2. Run the build script:
+   ./build-cairo-arm64.sh
+
+3. Wait for compilation to complete
+
+4. Check output in:
+   - lib/libcairo.a (ARM64 library)
+   - include/cairo/ (headers)
+
+WHAT GETS BUILT:
+----------------
+- libcairo.a with ARM NEON optimizations
+- pixman (part of cairo) with ARM support
+- Dependency: libz.a
+
+TROUBLESHOOTING:
+----------------
+If you get SSE2/x86 compilation errors:
+  → ARM build environment not set up
+  → Run: cd "../ARM build/scripts" && ./setup-arm-build.sh
+
+If build succeeds but library is x86_64:
+  → Check ARCHS setting in xcodebuild command
+  → Should be: -arch arm64 ARCHS=arm64
+
+TO RESTORE INTEL BUILD:
+-----------------------
+cd "../ARM build/scripts"
+./restore-intel-build.sh

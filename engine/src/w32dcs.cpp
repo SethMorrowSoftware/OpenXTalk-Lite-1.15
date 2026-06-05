@@ -828,9 +828,21 @@ static HDC snapdesthdc;
 static MCRectangle snaprect;
 static int32_t snapoffsetx, snapoffsety;
 
+//-- tperry 11th October 2025
+// Dark mode support for Windows 10 build 17763+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1
+#define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
+#endif
+
 typedef HRESULT (CALLBACK *DwmIsCompositionEnabledPtr)(BOOL *p_enabled);
+typedef HRESULT (WINAPI *DwmSetWindowAttributePtr)(HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute);
 static HMODULE s_dwmapi_library = NULL;
 static DwmIsCompositionEnabledPtr s_dwm_is_composition_enabled = NULL;
+static DwmSetWindowAttributePtr s_dwm_set_window_attribute = NULL;
 
 static bool WindowsIsCompositionEnabled(void)
 {
@@ -845,6 +857,10 @@ static bool WindowsIsCompositionEnabled(void)
 
 		s_dwm_is_composition_enabled = (DwmIsCompositionEnabledPtr)GetProcAddress(s_dwmapi_library, "DwmIsCompositionEnabled");
 
+		//-- tperry 11th October 2025
+		// Load DwmSetWindowAttribute for dark mode support
+		s_dwm_set_window_attribute = (DwmSetWindowAttributePtr)GetProcAddress(s_dwmapi_library, "DwmSetWindowAttribute");
+
 		if (s_dwm_is_composition_enabled == NULL)
 		{
 			FreeLibrary(s_dwmapi_library);
@@ -858,6 +874,46 @@ static bool WindowsIsCompositionEnabled(void)
 		return false;
 
 	return t_enabled != FALSE;
+}
+
+//-- tperry 11th October 2025
+// Check if Windows is in dark mode by reading the registry
+static bool MCWin32IsSystemInDarkMode(void)
+{
+	HKEY hKey;
+	DWORD value = 1; // Default to light mode
+	DWORD size = sizeof(DWORD);
+	
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, 
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+		0, KEY_READ, &hKey) == ERROR_SUCCESS)
+	{
+		RegQueryValueExW(hKey, L"AppsUseLightTheme", NULL, NULL, (LPBYTE)&value, &size);
+		RegCloseKey(hKey);
+	}
+	
+	return (value == 0); // 0 means dark mode
+}
+
+//-- tperry 11th October 2025
+// Set dark mode attribute on window title bar
+static void MCWin32SetWindowDarkMode(HWND hwnd, bool dark_mode)
+{
+	if (MCmajorosversion < MCOSVersionMake(10, 0, 17763))
+		return; // Dark mode only supported on Windows 10 build 17763+
+	
+	if (s_dwm_set_window_attribute == NULL)
+		return;
+	
+	// Try the newer attribute first (Windows 10 20H1+)
+	BOOL value = dark_mode ? TRUE : FALSE;
+	HRESULT hr = s_dwm_set_window_attribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+	
+	// Fall back to older attribute for Windows 10 1809-1909
+	if (FAILED(hr))
+	{
+		s_dwm_set_window_attribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &value, sizeof(value));
+	}
 }
 
 // MW-2014-02-20: [[ Bug 11811 ]] Updated to scale snapshot to requested size.

@@ -1,0 +1,34 @@
+ARM SKIA BUILD STATUS
+=====================
+
+System Information:
+- Architecture: arm64 (Apple M1)
+- macOS SDK: 12.1
+- Target: ARM64 native build
+
+Build Strategy:
+1. Build dependencies (libgif, libexpat, libjpeg, libpng, libz) for ARM64
+2. Build libskia_opt_none (fallback optimizations)
+3. Build libskia_opt_arm (ARM NEON optimizations)
+4. Build main libskia library
+5. Verify ARM64 architecture
+6. Copy to ARM Skia folder
+
+Key Points:
+- Skia source already has ARM64 support
+- Using NEON SIMD optimizations
+- Deployment target: macOS 11.0 (first ARM macOS)
+- Skipping x86 SSE optimizations
+
+Build Command:
+./build-skia-arm64.sh
+
+Expected Output:
+- ARM Skia/lib/libskia.a
+- ARM Skia/lib/libskia_opt_arm.a
+- ARM Skia/lib/libskia_opt_none.a
+- ARM Skia/lib/libgif.a, libexpat.a, libjpeg.a, libpng.a, libz.a
+- ARM Skia/include/* (Skia headers)
+
+Build Log Location:
+- ARM Skia/build-logs/build-YYYYMMDD-HHMMSS.log

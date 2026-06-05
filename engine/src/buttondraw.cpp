@@ -152,7 +152,13 @@ void MCButton::draw(MCDC *dc, const MCRectangle& p_dirty, bool p_isolated, bool 
         }
 		else
 		{
-		if (flags & F_OPAQUE && (MCcurtheme == NULL || !noback
+		// tperry 2nd November 2025: Don't fill background for menu buttons when theme rendering is available
+		bool t_skip_background_fill = (style == F_MENU && MCcurtheme != NULL && 
+		                               (MCcurtheme->iswidgetsupported(WTHEME_TYPE_OPTIONBUTTON) ||
+		                                MCcurtheme->iswidgetsupported(WTHEME_TYPE_PULLDOWN) ||
+		                                MCcurtheme->iswidgetsupported(WTHEME_TYPE_COMBOBUTTON)));
+		
+		if (!t_skip_background_fill && flags & F_OPAQUE && (MCcurtheme == NULL || !noback
 		                         || ((style == F_STANDARD && (MCcurtheme != NULL &&
 		                                                     !MCcurtheme->iswidgetsupported(WTHEME_TYPE_PUSHBUTTON))) ||
 		                             (style == F_RECTANGLE && (MCcurtheme != NULL &&
@@ -434,14 +440,14 @@ void MCButton::draw(MCDC *dc, const MCRectangle& p_dirty, bool p_isolated, bool 
             {
                 // Centre things on the middle of the ascent
                 sx = shadowrect.x + leftmargin + borderwidth - DEFAULT_BORDER;
-                sy = roundf(centery + (fascent-fdescent)/2);
+                sy = roundf(centery + (fascent-fdescent)/2) - 2;  // Shift text up 2px
                 theight = fascent;
             }
             else
             {
                 // Centre things by centring the bounding box of the text
                 sx = shadowrect.x + leftmargin + borderwidth - DEFAULT_BORDER;
-                sy = centery - (nlines * fheight / 2) + fleading/2 + fascent;
+                sy = centery - (nlines * fheight / 2) + fleading/2 + fascent - 2;  // Shift text up 2px
                 theight = nlines * fheight;
             }
             
@@ -553,11 +559,29 @@ void MCButton::draw(MCDC *dc, const MCRectangle& p_dirty, bool p_isolated, bool 
 #ifdef _MACOSX
                 // FG-2014-10-29: [[ Bugfix 13842 ]] On Yosemite, glowing buttons
                 // should draw with white text.
+                // tperry 18th October 2025: Extended to handle default buttons with accent color
+                bool t_should_use_white_text = false;
                 if (IsMacLFAM() && MCmajorosversion >= MCOSVersionMake(10,10,0) && MCaqua
                     && !(flags & F_DISABLED) && isstdbtn && getstyleint(flags) == F_STANDARD
                     && ((state & CS_HILITED) || (state & CS_SHOW_DEFAULT))
                     && rect.height <= 24 && MCappisactive)
-                    setforeground(dc, DI_BACK, False, True);
+                    t_should_use_white_text = true;
+                
+                // tperry 18th October 2025: Default button with accent color needs white text
+                uint2 t_index;
+                if ((state & CS_SHOW_DEFAULT) && !(flags & F_DISABLED) && isstdbtn 
+                    && getstyleint(flags) == F_STANDARD
+                    && !getcindex(DI_FORE, t_index) && !getpindex(DI_FORE, t_index))
+                {
+                    t_should_use_white_text = true;
+                }
+                
+                if (t_should_use_white_text)
+                {
+                    MCColor t_white;
+                    t_white.red = t_white.green = t_white.blue = 0xFFFF;
+                    dc->setforeground(t_white);
+                }
                 // PM-2014-11-26: [[ Bug 14070 ]] [Removed code] Make sure text color in menuButton inverts when hilited
         
 #endif
@@ -1126,6 +1150,8 @@ void MCButton::drawpulldown(MCDC *dc, MCRectangle &srect)
 #ifdef _MACOSX
 				uint2 i;
 				if (!getcindex(DI_BACK, i) && !getpindex(DI_BACK, i))
+					//-- tperry 18th October 2025
+					// Dark background is drawn in osxtheme.mm before HITheme draws
 					MCcurtheme->drawwidget(dc, widgetinfo, srect);
 				else
 					draw3d(dc, srect, ETCH_RAISED, borderwidth);
@@ -1152,6 +1178,8 @@ void MCButton::drawoption(MCDC *dc, MCRectangle &srect, MCRectangle& r_content_r
 		
 		r_content_rect . width -= MCcurtheme -> getmetric(WTHEME_METRIC_OPTIONBUTTONARROWSIZE);
 
+		//-- tperry 18th October 2025
+		// Dark background is drawn in osxtheme.mm before HITheme draws
 		MCcurtheme->drawwidget(dc, widgetinfo, rect);
 		return;
 	}
@@ -1754,6 +1782,10 @@ void MCButton::drawmacdefault(MCDC *dc, const MCRectangle &srect)
 
 void MCButton::drawstandardbutton(MCDC *dc, MCRectangle &srect)
 {
+	//-- tperry 2nd November 2025
+	// Let native NSButton rendering handle standard 3D buttons for proper antialiasing and shadows
+	// The theme rendering path (MCcurtheme->drawwidget) will use NSButton on macOS 10.14+
+	
 	if (MCcurtheme)
 	{
 		MCWidgetInfo winfo;

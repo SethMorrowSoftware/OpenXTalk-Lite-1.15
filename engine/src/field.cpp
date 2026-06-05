@@ -2509,7 +2509,8 @@ void MCField::draw(MCDC *dc, const MCRectangle& p_dirty, bool p_isolated, bool p
 		int2 offset = MClook == LF_MOTIF ? 0 : -1;
 		if (flags & F_HSCROLLBAR && trect.height > scrollbarwidth)
 			trect.height += scrollbarwidth + offset;
-		if (flags & F_VSCROLLBAR && trect.width > scrollbarwidth)
+		// tperry 17-1-2026: Only expand border for scrollbar area when scrollbar is visible
+		if (flags & F_VSCROLLBAR && trect.width > scrollbarwidth && !vscrollbar->issbdisabled())
 			trect.width += scrollbarwidth + offset;
 		if (flags & F_3D)
 		{

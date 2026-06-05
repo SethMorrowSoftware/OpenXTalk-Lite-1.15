@@ -166,6 +166,8 @@ MCStatement *MCN_new_statement(int2 which)
 		return new MCLock;
     case S_LOG:
         return new MCLogCmd;
+    case S_MAC_SET_ICON:
+        return new MCMacSetIconCmd;
     case S_MARK:
 		return new MCMarkCommand;
 	case S_MODAL:
@@ -572,6 +574,8 @@ MCExpression *MCN_new_function(int2 which)
 		return new MCLog2;
 	case F_MACHINE:
 		return new MCMachine;
+	case F_MAC_SET_ICON:
+		return new MCMacSetIcon;
 	case F_MAC_TO_ISO:
 		return new MCMacToIso;
 	case F_MAIN_STACKS:

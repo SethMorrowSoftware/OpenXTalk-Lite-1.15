@@ -1,0 +1,152 @@
+NO-GYP APPROACH FOR ARM BUILDS
+===============================
+
+CONCEPT:
+--------
+Instead of using gyp (which requires Python and regenerates Xcode projects),
+we directly use the EXISTING Xcode projects with ARM64 architecture flags.
+
+WHY THIS WORKS:
+---------------
+1. Xcode projects already exist in build-mac/
+2. xcodebuild can override architecture at build time
+3. No need to regenerate projects for ARM
+4. Simpler, faster, more reliable
+5. No Python 2 or Python 3 dependency
+
+APPROACH:
+---------
+
+Instead of:
+  1. Run gyp with Python to generate Xcode projects
+  2. Build with xcodebuild
+  
+We do:
+  1. Build directly with xcodebuild + ARM64 flags
+  
+That's it!
+
+IMPLEMENTATION:
+---------------
+
+Standard xcodebuild command:
+  xcodebuild -project path/to/project.xcodeproj \
+             -configuration Release \
+             -target targetname
+
+ARM64 xcodebuild command:
+  xcodebuild -project path/to/project.xcodeproj \
+             -configuration Release \
+             -target targetname \
+             -arch arm64 \
+             ARCHS=arm64 \
+             ONLY_ACTIVE_ARCH=NO \
+             MACOSX_DEPLOYMENT_TARGET=11.0
+
+The key flags:
+  -arch arm64                    Build for ARM64
+  ARCHS=arm64                    Override project architecture
+  ONLY_ACTIVE_ARCH=NO            Build all specified architectures
+  MACOSX_DEPLOYMENT_TARGET=11.0  First ARM macOS version
+
+EXAMPLE - Building libcairo:
+-----------------------------
+
+xcodebuild -project "build-mac/livecode/thirdparty/libcairo/libcairo.xcodeproj" \
+           -configuration Release \
+           -arch arm64 \
+           ARCHS=arm64 \
+           ONLY_ACTIVE_ARCH=NO \
+           MACOSX_DEPLOYMENT_TARGET=11.0
+
+Output: _build/mac/Release/libcairo.a (ARM64)
+
+HANDLING x86-SPECIFIC CODE:
+---------------------------
+
+Problem: Some libraries (like Cairo) have x86 SSE code that won't compile for ARM
+
+Solution: Modify the source gyp file once, then use existing Xcode project
+
+Steps:
+  1. Copy original gyp to ARM build/gyp-modified/
+  2. Edit to exclude x86 code for ARM64
+  3. Run gyp ONCE to regenerate Xcode project
+  4. Commit the modified Xcode project
+  5. Never run gyp again - just use xcodebuild
+
+OR (simpler):
+  1. Manually edit the Xcode project to exclude x86 files
+  2. Save modified project in ARM build/xcode-projects/
+  3. Copy to build-mac/ when needed
+  4. Build with xcodebuild
+
+ADVANTAGES:
+-----------
+
+✓ No Python dependency
+✓ No gyp dependency
+✓ Faster builds (no project generation)
+✓ Simpler workflow
+✓ More reliable (fewer moving parts)
+✓ Easier to debug (just xcodebuild)
+✓ Works with existing projects
+✓ Can override any setting at build time
+
+DISADVANTAGES:
+--------------
+
+✗ If gyp files change, need to regenerate projects
+✗ Manual Xcode project edits if needed
+✗ Less automated than gyp approach
+
+But for ARM builds, this is MUCH simpler!
+
+REVISED WORKFLOW:
+-----------------
+
+For libraries WITHOUT x86-specific code (like Skia):
+  1. Just run xcodebuild with ARM64 flags
+  2. Done!
+
+For libraries WITH x86-specific code (like Cairo):
+  1. One-time: Modify gyp, regenerate Xcode project
+  2. Save modified Xcode project
+  3. Use xcodebuild with ARM64 flags
+  4. Done!
+
+NO ONGOING GYP USAGE NEEDED!
+
+IMPLEMENTATION FOR ARM BUILD SYSTEM:
+-------------------------------------
+
+Update build scripts to:
+  1. Remove config-arm-build.sh (no longer needed)
+  2. Remove config-arm.sh (no longer needed)
+  3. Keep setup-arm-build.sh (for gyp file modifications)
+  4. Simplify to just xcodebuild commands
+
+Example updated build-cairo-arm64.sh:
+  - Remove gyp/config steps
+  - Just run xcodebuild with ARM64 flags
+  - Much simpler!
+
+TESTING:
+--------
+
+We already proved this works with Skia:
+  - No gyp modifications needed
+  - Just xcodebuild with -arch arm64
+  - Built 84MB ARM64 library successfully
+
+RECOMMENDATION:
+---------------
+
+ADOPT THIS APPROACH:
+1. Remove Python 3 config scripts (not needed)
+2. Simplify build scripts to pure xcodebuild
+3. One-time gyp run for Cairo (already done)
+4. Use existing Xcode projects for everything else
+5. Much simpler, more maintainable system
+
+This is the RIGHT approach for ARM builds!

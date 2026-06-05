@@ -1645,7 +1645,17 @@ void MCStack::createmenu(MCControl *nc, uint2 width, uint2 height)
 		uint2 i;
 		MCObject *tparent = getparent();
 		if  (!tparent->getcindex(DI_BACK, i) && !tparent->getpindex(DI_BACK,i))
-			setsprop(P_BACK_COLOR,  MCSTR("255,255,255"));
+		{
+			// tperry 7-12-2025 -- Use dark background for menu windows in dark mode
+			// This fixes ComboBox popup menu white background in dark mode
+#ifdef _MAC_DESKTOP
+			extern bool MCPlatformGetSystemAppearanceIsDark(void);
+			if (MCPlatformGetSystemAppearanceIsDark())
+				setsprop(P_BACK_COLOR,  MCSTR("61,61,61"));  // Dark gray for dark mode
+			else
+#endif
+				setsprop(P_BACK_COLOR,  MCSTR("255,255,255"));  // White for light mode
+		}
 	}
 	else
 		if ((nc->gettype() == CT_FIELD && MClook != LF_MOTIF)

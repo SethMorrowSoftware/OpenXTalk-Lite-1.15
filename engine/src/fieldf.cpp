@@ -532,13 +532,21 @@ bool MCField::getshowlines(void) const
 
 uint2 MCField::getfwidth() const
 {
+	// tperry 17-1-2026: Experimental - adjust word wrap width when scrollbar hidden
+	const int kWrapWidthExpandWhenHidden = 0;  // Added to wrap width when scrollbar hidden
+	
 	int4 width = rect.width;
 	if (borderwidth != 0)
 		width -= (borderwidth - DEFAULT_BORDER) << 1;
 	if (flags & F_SHADOW)
 		width -= shadowoffset;
 	if (flags & F_VSCROLLBAR)
-		width -= vscrollbar->getrect().width;
+	{
+		if (!vscrollbar->issbdisabled())
+			width -= vscrollbar->getrect().width;
+		else
+			width += kWrapWidthExpandWhenHidden;
+	}
 	if (width > 0 && width < (int4) MAXUINT2)
 		return (uint2)width;
 	else
@@ -573,8 +581,25 @@ MCRectangle MCField::getfrect() const
 	}
 	if (flags & F_HSCROLLBAR && trect.height > scrollbarwidth)
 		trect.height -= hscrollbar->getrect().height - 1;
+	// tperry 17-1-2026: Only reserve space for vertical scrollbar if content needs scrolling
+	// Experimental adjustments - tweak these to control clipping when track is hidden
+	// Positive = expand (move edge outward), Negative = shrink (move edge inward)
+	const int kVisibleInnerAdjust = 1;       // Inner edge adjust when scrollbar visible (was 1 originally)
+	const int kHiddenClipLeft = 0;           // Left edge: + moves left (wider), - moves right (narrower)
+	const int kHiddenClipRight = 0;          // Right edge: + moves right (wider), - moves left (narrower)
 	if (flags & F_VSCROLLBAR && trect.width > scrollbarwidth)
-		trect.width -= vscrollbar->getrect().width - 1;
+	{
+		if (!vscrollbar->issbdisabled())
+		{
+			trect.width -= vscrollbar->getrect().width - kVisibleInnerAdjust;
+		}
+		else
+		{
+			// Scrollbar hidden - adjust content area clipping
+			trect.x -= kHiddenClipLeft;                          // Adjust left edge
+			trect.width += kHiddenClipLeft + kHiddenClipRight;   // Adjust total width
+		}
+	}
 	return trect;
 }
 
@@ -1184,7 +1209,8 @@ void MCField::drawrect(MCDC *dc, const MCRectangle &dirty)
 			dc->restore();
 		}
 	}
-	if (flags & F_VSCROLLBAR)
+	// tperry 17-1-2026: Only draw scrollbar if it's not disabled (track visible)
+	if (flags & F_VSCROLLBAR && !vscrollbar->issbdisabled())
 	{
 		MCRectangle vrect = MCU_intersect_rect(vscrollbar->getrect(), trect);
 		if (vrect.width != 0 && vrect.height != 0)

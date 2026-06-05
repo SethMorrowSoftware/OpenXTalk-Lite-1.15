@@ -1,0 +1,522 @@
+LIVECODE ENGINE - ARM MACOS (APPLE SILICON) COMPILATION REPORT
+================================================================
+
+EXECUTIVE SUMMARY
+-----------------
+Compiling LiveCode for native ARM macOS (Apple Silicon/M1/M2/M3) requires:
+1. Architecture configuration changes across all Xcode projects
+2. Recompilation of 20+ third-party libraries for ARM64
+3. Build system modifications (gyp/Makefile)
+4. Potential assembly code updates in libraries
+5. Testing and validation across all engine components
+
+CURRENT STATE: x86_64 ONLY
+The entire codebase is currently hardcoded to build for x86_64 Intel architecture.
+
+
+DETAILED ANALYSIS
+=================
+
+1. BUILD SYSTEM ARCHITECTURE CONFIGURATION
+------------------------------------------
+
+Current Architecture Settings:
+- All Xcode projects specify: ARCHS = x86_64
+- Build configuration: config/mac.gypi lines 216, 226, 236
+- Deployment target: macOS 10.9 (supports Intel only)
+- SDK: macOS 12.1 SDK (includes ARM64 support in .tbd files)
+
+Files Requiring Architecture Changes:
+- config/mac.gypi (3 locations: Debug, Release, Fast configurations)
+- All 65+ .xcodeproj/project.pbxproj files in build-mac/
+- config/arch.gypi (add ARM64 host detection)
+
+Proposed Architecture Setting:
+- Change ARCHS from 'x86_64' to 'arm64' for native ARM
+- OR use 'x86_64 arm64' for Universal Binary (both architectures)
+- Update MACOSX_DEPLOYMENT_TARGET to 11.0 minimum (first ARM macOS)
+
+
+2. THIRD-PARTY LIBRARIES REQUIRING RECOMPILATION
+-------------------------------------------------
+
+The following libraries must be rebuilt for ARM64:
+
+Core Libraries (in thirdparty/):
+- libskia (graphics engine) - HAS ARM-specific optimizations
+- libcairo (2D graphics) - HAS ARM assembly code
+- libffi (foreign function interface) - HAS ARM assembly code
+- libopenssl (cryptography) - HAS architecture-specific assembly
+- libfreetype (font rendering)
+- libharfbuzz (text shaping)
+- libpng (PNG image support)
+- libjpeg (JPEG image support)
+- libgif (GIF image support)
+- libxml (XML parsing)
+- libxslt (XSLT transformations)
+- libexpat (XML parsing)
+- libpcre (regex engine)
+- libz (compression)
+- libzip (ZIP archive support)
+- libsqlite (database)
+- libiodbc (database connectivity)
+- libpq (PostgreSQL driver)
+- libmysql (MySQL driver)
+- libcef (Chromium Embedded Framework) - if used
+
+Prebuilt Dependencies (in prebuilt/):
+- ICU (International Components for Unicode)
+- OpenSSL 1.1.1g
+- libcurl (HTTP client)
+- Python 2.7.18 (toolchain dependency)
+
+Total: 20+ libraries requiring ARM64 compilation
+
+
+3. ASSEMBLY CODE REQUIRING ATTENTION
+-------------------------------------
+
+Libraries with Architecture-Specific Assembly:
+
+libffi:
+- src/aarch64/sysv.S (ARM64 calling conventions)
+- Multiple ARM assembly files for 32-bit ARM
+- Critical for foreign function calls
+
+libcairo:
+- src/pixman-arm-neon-asm.S
+- src/pixman-arm-neon-asm-bilinear.S
+- src/pixman-arm-simd-asm.S
+- src/pixman-arm-simd-asm-scaled.S
+- ARM NEON SIMD optimizations
+
+libopenssl:
+- crypto/x86_64cpuid.s (x86_64 specific)
+- Needs ARM64 equivalent assembly
+- Performance-critical cryptographic operations
+
+libskia:
+- src/opts/ directory contains architecture-specific optimizations
+- ARM NEON implementations available (opts_armv7_arm64_srcs)
+- Needs proper build configuration selection
+
+
+4. BUILD SCRIPTS AND MAKEFILES
+-------------------------------
+
+Files Requiring Updates:
+
+Makefile:
+- Line 160-196: Mac build rules
+- config-mac, compile-mac, check-mac targets
+- XCODEBUILD invocations
+
+config.sh:
+- Platform detection and configuration script
+- Generates Xcode projects via gyp
+
+prebuilt/scripts/build-thirdparty.sh:
+- Lines 33-36: Mac-specific library build
+- BUILDPATH and LIBPATH configuration
+- Currently uses "universal" but builds x86_64 only
+
+prebuilt/build-libraries.sh:
+- Orchestrates third-party library compilation
+- Architecture detection needed
+
+
+5. TOOLCHAIN CONSIDERATIONS
+----------------------------
+
+The LiveCode toolchain (gentle, reflex, lc-compile) must run during build:
+- Currently compiled for x86_64
+- Options:
+  a) Cross-compile: Build x86_64 toolchain, use Rosetta 2 during ARM build
+  b) Native: Build ARM64 toolchain first, then use for ARM engine build
+  c) Universal: Build universal binary toolchain
+
+Recommendation: Option (a) initially - use Rosetta 2 for toolchain
+- Simplest approach
+- Rosetta 2 performance adequate for build tools
+- Later optimize with native ARM toolchain
+
+
+6. ENGINE SOURCE CODE
+----------------------
+
+Good News:
+- Engine source is largely architecture-agnostic C++
+- No inline assembly found in engine/src/*.cpp
+- Uses standard C++ and platform APIs
+- Minimal architecture-specific code
+
+Potential Issues:
+- Endianness assumptions (ARM is little-endian like x86_64)
+- Pointer size assumptions (both are 64-bit)
+- SIMD intrinsics if any (need ARM NEON equivalents)
+- Memory alignment requirements may differ
+
+
+7. TESTING REQUIREMENTS
+------------------------
+
+Components Requiring Validation:
+- Engine startup and basic functionality
+- Graphics rendering (libskia, libcairo)
+- Cryptography (libopenssl)
+- Database connectivity (ODBC, MySQL, PostgreSQL, SQLite)
+- Network operations (libcurl, SSL/TLS)
+- File I/O and compression
+- Text rendering and internationalization (ICU)
+- External libraries and FFI
+- LiveCode Builder (LCB) modules
+- IDE functionality
+- Standalone builder
+- Server engine
+
+
+8. DEPLOYMENT TARGET CONSIDERATIONS
+------------------------------------
+
+Current: macOS 10.9 (2013)
+Required for ARM: macOS 11.0 Big Sur minimum (2020)
+
+Impact:
+- First macOS version with Apple Silicon support
+- May require updating deprecated API usage
+- Benefits: Access to newer macOS features
+- Trade-off: Drops support for older Intel Macs
+
+Options:
+- Single ARM64 build (macOS 11.0+)
+- Universal Binary (macOS 11.0+ for ARM, 10.9+ for Intel)
+- Separate builds for Intel and ARM
+
+
+ACTION PLAN
+===========
+
+PHASE 1: PREPARATION (1-2 days)
+--------------------------------
+[ ] 1.1 Backup current working x86_64 build
+[ ] 1.2 Document current build process and verify it works
+[ ] 1.3 Set up ARM Mac for testing (M1/M2/M3 Mac)
+[ ] 1.4 Install Xcode with ARM64 support
+[ ] 1.5 Verify macOS 12.1 SDK includes ARM64 libraries
+
+
+PHASE 2: BUILD SYSTEM CONFIGURATION (2-3 days)
+-----------------------------------------------
+[ ] 2.1 Update config/mac.gypi architecture settings
+    - Change ARCHS to 'arm64' (or 'x86_64 arm64' for universal)
+    - Update MACOSX_DEPLOYMENT_TARGET to '11.0'
+    
+[ ] 2.2 Update config/arch.gypi for ARM64 host detection
+    - Add detection for 'arm64' and 'aarch64' in uname_m
+    - Set host_arch appropriately
+    
+[ ] 2.3 Regenerate Xcode projects
+    - Run: make config-mac
+    - Verify all .xcodeproj files updated with ARM64 arch
+    
+[ ] 2.4 Update Makefile if needed
+    - Verify XCODEBUILD commands work with new architecture
+
+
+PHASE 3: THIRD-PARTY LIBRARIES (5-10 days)
+-------------------------------------------
+[ ] 3.1 Build prebuilt dependencies for ARM64
+    [ ] 3.1.1 OpenSSL 1.1.1g
+        - cd prebuilt/
+        - Modify scripts/build-openssl.sh for ARM64
+        - Build and archive
+    
+    [ ] 3.1.2 ICU 58.2
+        - Modify scripts/build-icu.sh for ARM64
+        - Build and archive
+    
+    [ ] 3.1.3 libcurl
+        - Modify scripts/build-curl.sh for ARM64
+        - Build and archive
+
+[ ] 3.2 Build thirdparty libraries for ARM64
+    [ ] 3.2.1 Update prebuilt/scripts/build-thirdparty.sh
+        - Set ARCH=arm64 or detect automatically
+        - Update BUILDPATH and LIBPATH
+    
+    [ ] 3.2.2 Build libraries with assembly code first:
+        - libffi (test ARM64 assembly)
+        - libcairo (test ARM NEON assembly)
+        - libopenssl (verify crypto assembly)
+    
+    [ ] 3.2.3 Build remaining libraries:
+        - libskia (enable ARM optimizations)
+        - libfreetype, libharfbuzz
+        - libpng, libjpeg, libgif
+        - libxml, libxslt, libexpat
+        - libpcre, libz, libzip
+        - libsqlite
+        - libiodbc, libpq, libmysql
+    
+    [ ] 3.2.4 Verify all libraries built successfully
+        - Check file architecture: file lib/*.a
+        - Should show "Mach-O 64-bit object arm64"
+
+[ ] 3.3 Update library gyp files if needed
+    - Verify architecture-specific source selection
+    - Update libskia.gyp to use ARM optimizations
+
+
+PHASE 4: TOOLCHAIN BUILD (2-3 days)
+------------------------------------
+[ ] 4.1 Build toolchain components
+    [ ] 4.1.1 gentle (parser generator)
+    [ ] 4.1.2 reflex (lexer generator)
+    [ ] 4.1.3 lc-compile (LiveCode Builder compiler)
+    [ ] 4.1.4 lc-run (LiveCode Builder runtime)
+
+[ ] 4.2 Test toolchain functionality
+    - Verify tools can process .lcb files
+    - Check for any architecture-specific issues
+
+
+PHASE 5: ENGINE COMPILATION (3-5 days)
+---------------------------------------
+[ ] 5.1 Build libfoundation (C++ foundation library)
+[ ] 5.2 Build libgraphics (graphics abstraction)
+[ ] 5.3 Build libscript (LiveCode Builder runtime)
+[ ] 5.4 Build kernel (engine core)
+[ ] 5.5 Build engine variants:
+    [ ] 5.5.1 Development engine
+    [ ] 5.5.2 Standalone engine
+    [ ] 5.5.3 Server engine
+    [ ] 5.5.4 Installer stub
+
+[ ] 5.6 Resolve compilation errors
+    - Address any ARM-specific issues
+    - Fix architecture-dependent code
+    - Update deprecated APIs if needed
+
+
+PHASE 6: EXTENSIONS AND EXTERNALS (2-3 days)
+---------------------------------------------
+[ ] 6.1 Build LiveCode Builder extensions
+[ ] 6.2 Build external libraries:
+    [ ] 6.2.1 revdb (database)
+    [ ] 6.2.2 revxml (XML)
+    [ ] 6.2.3 revzip (ZIP)
+    [ ] 6.2.4 revbrowser (browser widget)
+    [ ] 6.2.5 revspeech (text-to-speech)
+    [ ] 6.2.6 revpdfprinter (PDF generation)
+
+
+PHASE 7: TESTING AND VALIDATION (5-7 days)
+-------------------------------------------
+[ ] 7.1 Basic engine tests
+    [ ] 7.1.1 Engine launches successfully
+    [ ] 7.1.2 Basic stack operations work
+    [ ] 7.1.3 Script execution functions correctly
+
+[ ] 7.2 Graphics and rendering tests
+    [ ] 7.2.1 Basic drawing operations
+    [ ] 7.2.2 Image import/export (PNG, JPEG, GIF)
+    [ ] 7.2.3 Font rendering
+    [ ] 7.2.4 Anti-aliasing and effects
+
+[ ] 7.3 Library functionality tests
+    [ ] 7.3.1 Database operations (SQLite, MySQL, PostgreSQL, ODBC)
+    [ ] 7.3.2 Network operations (HTTP, HTTPS, SSL/TLS)
+    [ ] 7.3.3 XML parsing and transformation
+    [ ] 7.3.4 ZIP compression/decompression
+    [ ] 7.3.5 Cryptographic operations
+
+[ ] 7.4 LiveCode Builder tests
+    [ ] 7.4.1 LCB modules load correctly
+    [ ] 7.4.2 Widgets function properly
+    [ ] 7.4.3 FFI calls work (foreign function interface)
+
+[ ] 7.5 IDE functionality tests
+    [ ] 7.5.1 IDE launches and operates
+    [ ] 7.5.2 Script editor functions
+    [ ] 7.5.3 Property inspector works
+    [ ] 7.5.4 Debugger operates correctly
+
+[ ] 7.6 Standalone builder tests
+    [ ] 7.6.1 Can build ARM64 standalones
+    [ ] 7.6.2 Standalones run on ARM Macs
+    [ ] 7.6.3 Inclusions work properly
+
+[ ] 7.7 Performance testing
+    [ ] 7.7.1 Benchmark against x86_64 (via Rosetta 2)
+    [ ] 7.7.2 Identify performance bottlenecks
+    [ ] 7.7.3 Verify ARM optimizations active
+
+
+PHASE 8: UNIVERSAL BINARY (OPTIONAL, 3-5 days)
+-----------------------------------------------
+If building Universal Binary supporting both architectures:
+
+[ ] 8.1 Configure for multiple architectures
+    - Set ARCHS to 'x86_64 arm64'
+    - Build all libraries as universal binaries
+
+[ ] 8.2 Build universal engine
+    - Compile for both architectures
+    - Verify proper architecture selection
+
+[ ] 8.3 Test on both platforms
+    - Test ARM64 on Apple Silicon Mac
+    - Test x86_64 on Intel Mac
+    - Verify universal binary works on both
+
+
+PHASE 9: DOCUMENTATION AND DEPLOYMENT (2-3 days)
+-------------------------------------------------
+[ ] 9.1 Document ARM build process
+[ ] 9.2 Update build scripts for ARM support
+[ ] 9.3 Create distribution packages
+[ ] 9.4 Update system requirements documentation
+[ ] 9.5 Prepare release notes
+
+
+ESTIMATED TIMELINE
+==================
+
+Minimum (ARM64 only, experienced developer): 3-4 weeks
+Realistic (ARM64 only, thorough testing): 5-7 weeks
+With Universal Binary: 6-9 weeks
+
+Critical Path:
+Third-party libraries -> Toolchain -> Engine -> Testing
+
+
+RISKS AND CHALLENGES
+====================
+
+HIGH RISK:
+- Assembly code compatibility in libffi, libcairo, libopenssl
+- Third-party library build failures
+- Architecture-specific bugs in engine code
+- Performance regressions
+
+MEDIUM RISK:
+- Toolchain cross-compilation issues
+- External library compatibility
+- Deprecated API usage requiring updates
+- Testing coverage gaps
+
+LOW RISK:
+- Build system configuration
+- Xcode project generation
+- Basic C++ code compilation
+
+
+DEPENDENCIES AND PREREQUISITES
+===============================
+
+Required:
+- Apple Silicon Mac (M1/M2/M3) for native testing
+- Xcode 13+ with Command Line Tools
+- macOS 12.1 SDK (already present in thirdparty/sdk/)
+- Python 2.7 (for build scripts)
+- Sufficient disk space (50+ GB for builds)
+
+Optional:
+- Intel Mac for Universal Binary testing
+- Build server for CI/CD
+- Performance profiling tools
+
+
+ALTERNATIVE APPROACHES
+======================
+
+1. ROSETTA 2 TRANSLATION (CURRENT STATE)
+   - x86_64 build runs on ARM via Rosetta 2
+   - Pros: No work required, already functional
+   - Cons: ~20-30% performance penalty, not native
+
+2. NATIVE ARM64 BUILD (RECOMMENDED)
+   - Full recompilation for ARM64
+   - Pros: Native performance, future-proof
+   - Cons: Significant development effort
+
+3. UNIVERSAL BINARY
+   - Single binary supporting both architectures
+   - Pros: Maximum compatibility
+   - Cons: 2x binary size, longer build times
+
+4. SEPARATE BUILDS
+   - Maintain separate x86_64 and ARM64 builds
+   - Pros: Smaller binaries, independent optimization
+   - Cons: More complex distribution
+
+
+TECHNICAL NOTES
+===============
+
+SDK Compatibility:
+- macOS 12.1 SDK includes ARM64 support
+- All system frameworks have arm64 slices in .tbd files
+- SDK already supports universal binary compilation
+
+Rosetta 2 During Build:
+- x86_64 toolchain can run via Rosetta 2 during ARM build
+- Allows incremental migration
+- Build tools don't need native ARM initially
+
+Library Versions:
+- OpenSSL 1.1.1g (2020) - has ARM64 support
+- ICU 58.2 (2017) - has ARM64 support
+- All third-party libraries are ARM-compatible versions
+
+Code Signing:
+- ARM64 binaries require proper code signing
+- Ad-hoc signing sufficient for development
+- Distribution requires Apple Developer ID
+
+
+RECOMMENDATIONS
+===============
+
+1. START WITH NATIVE ARM64 BUILD
+   - Focus on single architecture initially
+   - Simpler than universal binary
+   - Can add x86_64 later if needed
+
+2. BUILD LIBRARIES INCREMENTALLY
+   - Start with libraries that have assembly code
+   - Test each library before proceeding
+   - Catch architecture issues early
+
+3. USE ROSETTA 2 FOR TOOLCHAIN
+   - Keep toolchain as x86_64 initially
+   - Reduces complexity during transition
+   - Optimize toolchain later
+
+4. EXTENSIVE TESTING REQUIRED
+   - ARM architecture may expose latent bugs
+   - Test all major functionality areas
+   - Performance validation critical
+
+5. CONSIDER DEPLOYMENT TARGET
+   - macOS 11.0 minimum for ARM support
+   - Evaluate if older Intel Mac support needed
+   - Universal binary if backward compatibility required
+
+
+CONCLUSION
+==========
+
+Compiling LiveCode for native ARM macOS is feasible but requires:
+- Systematic recompilation of 20+ third-party libraries
+- Build system configuration updates across 65+ projects
+- Careful handling of architecture-specific assembly code
+- Comprehensive testing and validation
+
+The work is substantial but straightforward, with no fundamental blockers.
+The existing codebase is well-structured for cross-platform support.
+The macOS 12.1 SDK already includes all necessary ARM64 support.
+
+Estimated effort: 5-7 weeks for complete ARM64 native build with testing.
+
+This document serves as a roadmap for the ARM compilation project.

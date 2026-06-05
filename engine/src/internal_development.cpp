@@ -79,6 +79,9 @@ along with LiveCode.  If not see <http://www.gnu.org/licenses/>.  */
 #include "internal.h"
 #include "ide.h"
 #include "bsdiff.h"
+#include "build_macarm.h"
+#include "dump_stack.h"
+#include "respring.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -839,6 +842,9 @@ MCInternalVerbInfo MCinternalverbs[] =
 	{ "filter", "controls", class_factory<MCIdeFilterControls> },
     { "list", "browsers", class_factory<MCInternalListBrowsers> },
 
+	{ "build", "MacARM", class_factory<MCInternalBuildMacARM> },
+	{ "dump", "stack", class_factory<MCInternalDumpStack> },
+	{ "respring", nil, class_factory<MCInternalRespring> },
 	{ nil, nil, nil }
 };
 

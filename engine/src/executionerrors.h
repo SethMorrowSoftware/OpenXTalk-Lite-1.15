@@ -917,7 +917,10 @@ enum Exec_errors
 	// {EE-0296} macToIso: error source expression
 	EE_MACTOISO_BADSOURCE,
 	
-	// {EE-0297} mark: bad card expression
+	// {EE-0297} macSetIcon: error in parameter expression
+	EE_MACSETICON_BADPARAM,
+	
+	// {EE-0298} mark: bad card expression
 	EE_MARK_BADCARD,
 	
 	// {EE-0298} mark: error in find expression

@@ -312,6 +312,12 @@ void MCStack::setopacity(uint1 p_level)
             /* UNCHECKED */ t_window_name.Lock(MCNameGetString(getname()));
             window -> handle . window = (MCSysWindowHandle)CreateWindowExW(t_ex_style, MC_WIN_CLASS_NAME_W, *t_window_name, t_style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, t_rect . left, t_rect . top, t_rect . right - t_rect . left, t_rect . bottom - t_rect . top, NULL, NULL, MChInst, NULL);
 			
+			//-- tperry 11th October 2025
+			// Apply dark mode to window title bar if system is in dark mode
+			extern void MCWin32SetWindowDarkMode(HWND hwnd, bool dark_mode);
+			extern bool MCWin32IsSystemInDarkMode(void);
+			MCWin32SetWindowDarkMode((HWND)window->handle.window, MCWin32IsSystemInDarkMode());
+			
 			// MW-2010-10-22: [[ Bug 8151 ]] Make sure we update the title string.
 			MCscreen -> setname(window, titlestring);
 
@@ -432,6 +438,12 @@ void MCStack::realize()
         /* UNCHECKED */ t_window_name.Lock(MCNameGetString(getname()));
         window -> handle . window = (MCSysWindowHandle)CreateWindowExW(exstyle, MC_WIN_CLASS_NAME_W, *t_window_name, wstyle | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, x, y, width, height,
                                                                        t_parenthwnd, NULL, MChInst, NULL);
+
+		//-- tperry 11th October 2025
+		// Apply dark mode to window title bar if system is in dark mode
+		extern void MCWin32SetWindowDarkMode(HWND hwnd, bool dark_mode);
+		extern bool MCWin32IsSystemInDarkMode(void);
+		MCWin32SetWindowDarkMode((HWND)window->handle.window, MCWin32IsSystemInDarkMode());
 
 		SetWindowLongPtrA((HWND)window->handle.window, GWLP_USERDATA, mode);
 		

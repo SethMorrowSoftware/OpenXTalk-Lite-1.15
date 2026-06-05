@@ -1,0 +1,107 @@
+ARM BUILD SYSTEM - COMPLETE SETUP
+==================================
+
+STRUCTURE CREATED:
+------------------
+
+ARM libraries/
+  ├── ARM build/                    ← NEW: Separate ARM build system
+  │   ├── README.txt                   Overview of system
+  │   ├── USAGE.txt                    Usage instructions
+  │   ├── gyp-modified/                ARM-modified gyp files
+  │   │   └── libcairo.gyp            Cairo with x86 code excluded
+  │   ├── config/                      ARM-specific configs (future)
+  │   ├── scripts/                     Build management scripts
+  │   │   ├── setup-arm-build.sh      Install ARM modifications
+  │   │   └── restore-intel-build.sh  Restore Intel build
+  │   └── backups/                     Original file backups
+  │       └── libcairo.gyp.original
+  │
+  ├── ARM Skia/                     ← Built ARM64 Skia library
+  │   ├── lib/libskia*.a               84MB ARM64 libraries
+  │   ├── include/                     Skia headers
+  │   └── build-logs/                  Build logs
+  │
+  ├── ARM Cairo/                    ← Ready to build Cairo
+  │   ├── build-cairo-arm64.sh         Build script
+  │   ├── BUILD-INSTRUCTIONS.txt       Instructions
+  │   └── (lib/, include/ after build)
+  │
+  └── ARM-BUILD-SYSTEM-SUMMARY.txt  ← This file
+
+KEY PRINCIPLES:
+---------------
+
+1. SEPARATION: Intel and ARM builds are completely separate
+2. SAFETY: Original files backed up before any modification
+3. REVERSIBLE: Easy to switch between ARM and Intel builds
+4. ORGANIZED: All ARM work in one folder structure
+5. DOCUMENTED: Clear instructions for each step
+
+WORKFLOW:
+---------
+
+FOR EACH NEW LIBRARY:
+
+1. Create "ARM [LibraryName]" folder
+2. Create build script (copy from ARM Skia as template)
+3. If gyp modifications needed:
+   a. Copy original gyp to ARM build/gyp-modified/
+   b. Modify for ARM64 (exclude x86 code, etc.)
+   c. Update setup-arm-build.sh to install it
+   d. Update restore-intel-build.sh to restore it
+4. Run setup-arm-build.sh
+5. Run library build script
+6. Verify ARM64 architecture
+7. Copy results to ARM [LibraryName]/lib/
+
+CURRENT STATUS:
+---------------
+
+✅ ARM Skia - COMPLETE
+   - 84MB ARM64 library built
+   - No gyp modifications needed (already ARM-ready)
+   - NEON optimizations active
+
+⚙️  ARM Cairo - READY TO BUILD
+   - Modified gyp file created (x86 code excluded)
+   - Build script ready
+   - ARM build environment active
+
+☐ ARM FFI - Next (has ARM assembly)
+☐ ARM OpenSSL - Next (has ARM crypto)
+☐ Other libraries - As needed
+
+ADVANTAGES OF THIS SYSTEM:
+---------------------------
+
+✓ Intel build never touched
+✓ Can build Intel and ARM in parallel (different machines)
+✓ Version control friendly (all mods in ARM build/)
+✓ Easy to see what was changed for ARM
+✓ Simple to add new libraries
+✓ Clear documentation trail
+✓ Reversible at any time
+
+TESTING THE SYSTEM:
+-------------------
+
+Setup ARM build:
+  cd "ARM libraries/ARM build/scripts"
+  ./setup-arm-build.sh
+
+Build Cairo:
+  cd "../ARM Cairo"
+  ./build-cairo-arm64.sh
+
+Restore Intel build:
+  cd "../ARM build/scripts"
+  ./restore-intel-build.sh
+
+NEXT STEPS:
+-----------
+
+1. Build ARM Cairo to test the system
+2. Add more libraries as needed
+3. Document any new gyp modifications
+4. Eventually: Build full ARM LiveCode engine

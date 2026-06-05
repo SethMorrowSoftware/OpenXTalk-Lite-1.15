@@ -1,0 +1,34 @@
+ARM FONT LIBRARIES - DEFERRED
+==============================
+
+Status: Xcode projects not generated yet
+
+ISSUE:
+------
+libfreetype and libharfbuzz exist in thirdparty/ but don't have
+Xcode projects in build-mac/ yet. They would need gyp to generate
+the projects.
+
+Since we're avoiding gyp for ARM builds, these are deferred.
+
+ALTERNATIVES:
+-------------
+
+1. Font libraries may not be critical for initial testing
+   - macOS provides system fonts
+   - LiveCode may use system font APIs
+   
+2. Can be added later if needed:
+   - Generate Xcode projects once with gyp
+   - Save to ARM build/xcode-projects/
+   - Build with xcodebuild
+
+3. Or skip entirely if not used by engine
+
+RECOMMENDATION:
+---------------
+
+Proceed without font libraries for now. Test engine build
+and see if they're actually needed. Add later if required.
+
+We have 16+ other libraries built successfully!

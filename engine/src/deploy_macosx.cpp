@@ -16,6 +16,8 @@ along with LiveCode.  If not see <http://www.gnu.org/licenses/>.  */
 
 #include "prefix.h"
 
+#include <mach/machine.h>
+
 #include "globdefs.h"
 #include "objdefs.h"
 #include "parsedef.h"
@@ -65,8 +67,7 @@ typedef int             vm_prot_t;
 
 #define VM_PROT_ALL     (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
 
-typedef uint32_t       cpu_type_t;
-typedef uint32_t       cpu_subtype_t;
+// cpu_type_t and cpu_subtype_t are now defined by <mach/machine.h>
 
 /*
  * Capability bits used in the definition of cpu_type.
@@ -1981,10 +1982,11 @@ static bool MCDeployToMacOSXFat(const MCDeployParameters& p_params, bool p_embed
 // is either PPC or x86, and that the executable loads Cocoa.
 static bool MCDeployValidateMacEngine(const MCDeployParameters& p_params, mach_header& p_header, load_command **p_commands)
 {
-	// Check the CPU type is PowerPC or X86
+	// Check the CPU type is PowerPC, X86, or ARM64
 	if (p_header . cputype != CPU_TYPE_POWERPC &&
 		p_header . cputype != CPU_TYPE_X86 &&
-        p_header . cputype != CPU_TYPE_X86_64)
+        p_header . cputype != CPU_TYPE_X86_64 &&
+        p_header . cputype != CPU_TYPE_ARM64)
 		return MCDeployThrow(kMCDeployErrorMacOSXBadCpuType);
 
 	// Check that Cocoa is one of the libraries linked to

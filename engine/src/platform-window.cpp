@@ -646,6 +646,14 @@ void MCPlatformUpdateWindow(MCPlatformWindowRef p_window)
 	p_window -> Update();
 }
 
+#ifndef _MAC_DESKTOP
+// On non-Mac platforms, this is a no-op (Mac implementation is in platform-window-mac.mm)
+void MCPlatformFlushWindowPendingDraws(MCPlatformWindowRef p_window)
+{
+	// No-op on platforms without async draws
+}
+#endif
+
 void MCPlatformInvalidateWindow(MCPlatformWindowRef p_window, MCRegionRef p_region)
 {
 	p_window -> Invalidate(p_region);

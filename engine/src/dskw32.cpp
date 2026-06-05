@@ -78,6 +78,22 @@ int *g_mainthread_errno;
 
 //////////////////////////////////////////////////////////////////////////////////
 
+// --tperry 11th October 2025: RtlGetVersion function typedef for getting true Windows version
+// This is more reliable than GetVersionEx which is affected by manifest settings
+typedef LONG (NTAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+// --tperry 11th October 2025: RTL_OSVERSIONINFOW structure (same as OSVERSIONINFOW but used by RtlGetVersion)
+typedef struct _RTL_OSVERSIONINFOW {
+    DWORD dwOSVersionInfoSize;
+    DWORD dwMajorVersion;
+    DWORD dwMinorVersion;
+    DWORD dwBuildNumber;
+    DWORD dwPlatformId;
+    WCHAR szCSDVersion[128];
+} RTL_OSVERSIONINFOW, *PRTL_OSVERSIONINFOW;
+
+//////////////////////////////////////////////////////////////////////////////////
+
 #define PATH_DELIMITER '\\'
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -1547,11 +1563,40 @@ struct MCWindowsDesktop: public MCSystemInterface, public MCWindowsSystemService
 		}
 
 		// MW-2005-05-26: Store a global variable containing major OS version...
-		OSVERSIONINFOA osv;
-		memset(&osv, 0, sizeof(OSVERSIONINFOA));
-		osv.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
-		GetVersionExA(&osv);
-		MCmajorosversion = MCOSVersionMake(osv.dwMajorVersion, osv.dwMinorVersion, 0);
+		// --tperry 11th October 2025: Updated to use RtlGetVersion for accurate Windows 11 detection
+		HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
+		if (hNtdll)
+		{
+			RtlGetVersionPtr RtlGetVersion = (RtlGetVersionPtr)GetProcAddress(hNtdll, "RtlGetVersion");
+			if (RtlGetVersion)
+			{
+				RTL_OSVERSIONINFOW osv;
+				memset(&osv, 0, sizeof(RTL_OSVERSIONINFOW));
+				osv.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOW);
+				if (RtlGetVersion(&osv) == 0)
+				{
+					// Windows 11 is identified by build number >= 22000 (still reports as 10.0.x)
+					if (osv.dwMajorVersion == 10 && osv.dwBuildNumber >= 22000)
+					{
+						// Report as Windows 11 for user clarity
+						MCmajorosversion = MCOSVersionMake(11, 0, 0);
+					}
+					else
+					{
+						MCmajorosversion = MCOSVersionMake(osv.dwMajorVersion, osv.dwMinorVersion, 0);
+					}
+				}
+			}
+		}
+		else
+		{
+			// --tperry 11th October 2025: Fallback to GetVersionExA if RtlGetVersion is not available (unlikely)
+			OSVERSIONINFOA osv;
+			memset(&osv, 0, sizeof(OSVERSIONINFOA));
+			osv.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
+			GetVersionExA(&osv);
+			MCmajorosversion = MCOSVersionMake(osv.dwMajorVersion, osv.dwMinorVersion, 0);
+		}
 
 		// MW-2012-09-19: [[ Bug ]] Adjustment to tooltip metrics for Windows.
 		if (MCmajorosversion >= MCOSVersionMake(5,0,0))

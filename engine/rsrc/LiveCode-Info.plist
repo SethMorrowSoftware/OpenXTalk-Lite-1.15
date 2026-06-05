@@ -24,6 +24,22 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>oxtstack</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>OpenXTalkDoc.icns</string>
+			<key>CFBundleTypeName</key>
+			<string>OpenXTalk Stack</string>
+			<key>CFBundleTypeOSTypes</key>
+			<array>
+				<string>OXTS</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(PRODUCT_NAME)</string>
@@ -140,6 +156,25 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>livecodescript</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>OpenXTalk Stack</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.openxtalk.stack</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>com.apple.macos.ostype</key>
+				<string>OXTS</string>
+				<key>public.filename-extension</key>
+				<array>
+					<string>oxtstack</string>
 				</array>
 			</dict>
 		</dict>

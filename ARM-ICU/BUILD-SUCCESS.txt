@@ -1,0 +1,57 @@
+ICU 58.2 ARM64 BUILD - SUCCESS!
+================================
+
+Date: November 2, 2025
+Build Time: ~2-3 minutes
+
+RESULTS:
+--------
+
+✅ libicuuc.a - Unicode Common (ARM64)
+✅ libicui18n.a - Internationalization (ARM64)
+✅ libicudata.a - Data (ARM64)
+✅ libicuio.a - I/O (ARM64)
+✅ libicutu.a - Test Utilities (ARM64)
+
+All libraries verified as pure ARM64!
+
+Location: prebuilt/lib/mac-arm64/
+
+BUILD CONFIGURATION:
+--------------------
+
+Source: ICU 58.2
+Architecture: arm64
+Min macOS: 11.0 (Big Sur)
+Type: Static libraries
+Data Packaging: Static
+
+Compiler Flags:
+- CFLAGS="-arch arm64 -mmacosx-version-min=11.0"
+- CXXFLAGS="-arch arm64 -mmacosx-version-min=11.0"
+- LDFLAGS="-arch arm64 -mmacosx-version-min=11.0"
+
+Configure Options:
+- --enable-static
+- --disable-shared
+- --disable-samples
+- --disable-tests
+- --with-data-packaging=static
+
+NEXT STEPS:
+-----------
+
+Now we need to update the Xcode project to use these ARM64
+libraries when building for ARM64 architecture.
+
+The libraries are in: prebuilt/lib/mac-arm64/
+Original x86_64 libraries remain in: prebuilt/lib/mac/
+
+This allows us to build for both architectures!
+
+SUCCESS!
+--------
+
+We now have complete ARM64 ICU support for LiveCode!
+
+This was the final missing piece for the ARM64 build.

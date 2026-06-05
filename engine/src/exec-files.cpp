@@ -26,6 +26,10 @@ along with LiveCode.  If not see <http://www.gnu.org/licenses/>.  */
 #include "globals.h"
 #include "osspec.h"
 
+#ifdef _MACOSX
+#include "macicon.h"
+#endif
+
 #include "securemode.h"
 #include "exec.h"
 #include "util.h"
@@ -552,6 +556,40 @@ void MCFilesEvalSetResource(MCExecContext& ctxt, MCStringRef p_source, MCStringR
 	}
 
 	ctxt.Throw();
+}
+
+void MCFilesEvalMacSetIcon(MCExecContext& ctxt, MCStringRef p_icon_path, MCStringRef p_file_path, MCStringRef& r_value)
+{
+	if (MCsecuremode & MC_SECUREMODE_DISK)
+	{
+		ctxt.LegacyThrow(EE_DISK_NOPERM);
+		return;
+	}
+	
+#ifdef _MACOSX
+	MCAutoStringRef t_error;
+	if (MCS_macseticon(p_icon_path, p_file_path, &t_error))
+	{
+		if (*t_error != nil)
+			ctxt.SetTheResultToValue(*t_error);
+		else
+			ctxt.SetTheResultToEmpty();
+		r_value = (MCStringRef)MCValueRetain(kMCEmptyString);
+		return;
+	}
+	
+	// MCS_macseticon failed - report the error
+	if (*t_error != nil)
+		ctxt.SetTheResultToValue(*t_error);
+	else
+		ctxt.SetTheResultToCString("macSetIcon failed");
+	
+	r_value = (MCStringRef)MCValueRetain(kMCEmptyString);
+	ctxt.Throw();
+#else
+	r_value = (MCStringRef)MCValueRetain(kMCEmptyString);
+	ctxt.SetTheResultToCString("macSetIcon is only supported on macOS");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

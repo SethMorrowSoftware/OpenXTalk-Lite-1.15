@@ -660,6 +660,36 @@ LRESULT CALLBACK MCWindowProc(HWND hwnd, UINT msg, WPARAM wParam,
 		if (hwnd != ((MCScreenDC *)MCscreen) -> getinvisiblewindow())
 			break;
 
+		//-- tperry 11th October 2025
+		// Check if this is a theme/personalization change (dark mode toggle)
+		if (uMsg == WM_SETTINGCHANGE && lParam != NULL)
+		{
+			if (wcscmp((LPCWSTR)lParam, L"ImmersiveColorSet") == 0)
+			{
+				// Dark mode changed - update all stack windows
+				extern void MCWin32SetWindowDarkMode(HWND hwnd, bool dark_mode);
+				extern bool MCWin32IsSystemInDarkMode(void);
+				bool t_dark_mode = MCWin32IsSystemInDarkMode();
+				
+				MCStack *t_stack = MCstacks->getfirst();
+				while (t_stack != NULL)
+				{
+					if (t_stack->getwindow() != NULL)
+					{
+						HWND t_hwnd = (HWND)t_stack->getwindow()->handle.window;
+						if (t_hwnd != NULL)
+						{
+							MCWin32SetWindowDarkMode(t_hwnd, t_dark_mode);
+							// Force title bar redraw
+							SetWindowPos(t_hwnd, NULL, 0, 0, 0, 0,
+								SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+						}
+					}
+					t_stack = t_stack->next();
+				}
+			}
+		}
+
 		((MCScreenDC *)MCscreen) -> processdesktopchanged(true);
 	}
 	break;

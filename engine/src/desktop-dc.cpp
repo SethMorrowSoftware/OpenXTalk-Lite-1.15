@@ -786,6 +786,22 @@ Boolean MCScreenDC::wait(real8 duration, Boolean dispatch, Boolean anyevent)
 {
     MCDeletedObjectsEnterWait(dispatch);
     
+	// PERFORMANCE FIX: Flush any pending asynchronous screen updates before waiting
+	// This ensures visual consistency when scripts use 'wait'
+	MCStacknode *t_stacks = MCstacks->topnode();
+	if (t_stacks != nil)
+	{
+		MCStacknode *tptr = t_stacks->prev();
+		do
+		{
+			MCStack *sptr = tptr->getstack();
+			if (sptr->getwindow() != nil)
+				MCPlatformFlushWindowPendingDraws(sptr->getwindow());
+			tptr = tptr->prev();
+		}
+		while (tptr != t_stacks->prev());
+	}
+    
 	real8 curtime = MCS_time();
 	
 	if (duration < 0.0)

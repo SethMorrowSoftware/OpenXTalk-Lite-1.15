@@ -1,0 +1,297 @@
+# macOS Dependencies for Building LiveCode/OpenXTalk from Source
+# For vanilla macOS Sonoma (14.x) system
+# Generated from build_openxtalk_no_patches.sh
+
+================================================================================
+CORE BUILD TOOLS
+================================================================================
+
+1. Xcode Command Line Tools
+   - Required for: All compilation, xcodebuild, codesign, make, git
+   - Installation: xcode-select --install
+   - Minimum version: Xcode 13+ recommended for macOS Sonoma
+   - Note: Full Xcode.app installation is required (not just CLI tools)
+
+2. Xcode.app (Full Installation)
+   - Required for: Building Xcode projects, iOS SDK support
+   - Installation: Download from Mac App Store or Apple Developer
+   - Minimum version: Xcode 13.0 or later
+   - Location: /Applications/Xcode.app (or custom location)
+   - Note: Must run Xcode at least once to accept license and install components
+
+3. macOS SDK 12.1 (Monterey SDK)
+   - Required for: C89/C99 compatibility mode for legacy code
+   - Deployment target: macOS 10.12 (Sierra)
+   - Build SDK: macOS 12.1
+   - Note: Projects are configured to use macosx12.1 SDK
+   - Installation: Included with Xcode 13.2+, or extract from older Xcode versions
+   - Alternative: Projects may work with newer SDKs but 12.1 is tested/configured
+
+================================================================================
+PROGRAMMING LANGUAGES & RUNTIMES
+================================================================================
+
+4. Python 2.7.18
+   - Required for: Build configuration scripts (config.py, gyp)
+   - Installation options:
+     a) Build from included source:
+        cd thirdparty/python2
+        ./install-local.sh
+     b) System installation (if available):
+        - Python 2.7 reached EOL in 2020
+        - Not available via Homebrew on modern macOS
+        - Included source is recommended approach
+   - Build dependencies for Python 2.7.18:
+     * C compiler (from Xcode)
+     * make (from Xcode)
+     * zlib (system library)
+     * OpenSSL 1.0.x or 1.1.x (system library)
+   - Note: Build script creates symlinks to /usr/local/bin/python2.7
+
+5. Java JDK 11 (OpenJDK)
+   - Required for: JNI headers for Java integration
+   - Installation: brew install openjdk@11
+   - Location: /usr/local/opt/openjdk@11
+   - Required files: JNI headers (jni.h, jni_md.h)
+   - Note: Build script creates symlink at /tmp/livecode-build/java-headers
+   - Alternative: Any JDK 8+ should work, but 11 is tested
+
+================================================================================
+PACKAGE MANAGERS
+================================================================================
+
+6. Homebrew
+   - Required for: Installing Java JDK and other dependencies
+   - Installation: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   - Website: https://brew.sh
+   - Note: Not strictly required if you install Java JDK manually
+
+================================================================================
+SYSTEM LIBRARIES & FRAMEWORKS (Usually Pre-installed)
+================================================================================
+
+7. macOS System Frameworks
+   - Cocoa.framework (GUI)
+   - Foundation.framework (Core)
+   - CoreFoundation.framework
+   - Carbon.framework (Legacy support)
+   - Security.framework (Codesigning)
+   - IOKit.framework
+   - Note: These are included with macOS and Xcode
+
+8. Standard C/C++ Libraries
+   - libc++ (C++ standard library)
+   - libSystem (System C library)
+   - Note: Included with Xcode Command Line Tools
+
+================================================================================
+BUILD SYSTEM TOOLS
+================================================================================
+
+9. make
+   - Required for: Running Makefiles, building Python
+   - Installation: Included with Xcode Command Line Tools
+   - Version: GNU Make 3.81 or later
+
+10. git
+    - Required for: Version control (if cloning repository)
+    - Installation: Included with Xcode Command Line Tools
+    - Alternative: brew install git
+
+11. gyp (Generate Your Projects)
+    - Required for: Generating Xcode project files from gyp files
+    - Installation: Included in LiveCode repository
+    - Note: Uses Python 2.7 to run
+
+================================================================================
+CODE SIGNING TOOLS
+================================================================================
+
+12. codesign
+    - Required for: Ad-hoc code signing of built application
+    - Installation: Included with Xcode Command Line Tools
+    - Usage: Ad-hoc signing (no developer certificate required)
+    - Note: Build script uses: codesign --force --deep --sign -
+
+13. PlistBuddy
+    - Required for: Modifying Info.plist files
+    - Installation: Included with macOS
+    - Location: /usr/libexec/PlistBuddy
+
+================================================================================
+OPTIONAL DEPENDENCIES (For Full iOS/Mobile Support)
+================================================================================
+
+14. iOS SDKs (Multiple Versions)
+    - Required for: Building iOS components (revmobile)
+    - Versions: 11.2, 12.1, 13.2, 14.4, 14.5
+    - Note: Build script targets "LiveCode-all" which may skip mobile on errors
+    - Installation: Requires multiple Xcode versions or SDK extraction
+    - Location: /Applications/Xcode-Dev/ (as per docs/development/build-mac.md)
+
+15. Older Xcode Versions (For Legacy SDK Support)
+    - Xcode 8.3, 8.2, 7.2.1, 6.2
+    - Required for: Building for older iOS/macOS versions
+    - Note: Not required for basic desktop build
+    - See: docs/development/build-mac.md for details
+
+================================================================================
+THIRD-PARTY LIBRARIES (Included in Repository)
+================================================================================
+
+The following libraries are included as source in the repository and built
+automatically. No separate installation required:
+
+- ICU (International Components for Unicode)
+- OpenSSL
+- cURL
+- Cairo (graphics)
+- Expat (XML parser)
+- FFI (Foreign Function Interface)
+- GIF, JPEG, PNG libraries
+- iODBC (database connectivity)
+- MySQL, PostgreSQL client libraries
+- PCRE (regular expressions)
+- Skia (graphics engine)
+- SQLite
+- libxml2, libxslt
+- zlib
+
+Location: livecode/prebuilt/ and livecode/thirdparty/
+
+================================================================================
+DISK SPACE REQUIREMENTS
+================================================================================
+
+- Source code: ~2 GB
+- Build artifacts: ~5-10 GB
+- Python 2.7.18 build: ~200 MB
+- Total recommended: 15-20 GB free space
+
+================================================================================
+INSTALLATION SUMMARY FOR VANILLA macOS SONOMA
+================================================================================
+
+Step-by-step installation on a fresh macOS Sonoma system:
+
+1. Install Xcode from Mac App Store
+   - Open and accept license: sudo xcodebuild -license accept
+
+2. Install Xcode Command Line Tools
+   - xcode-select --install
+
+3. Install Homebrew (if not present)
+   - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+4. Install Java JDK 11
+   - brew install openjdk@11
+   - sudo ln -sfn /usr/local/opt/openjdk@11/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-11.jdk
+
+5. Clone/Download LiveCode repository
+   - git clone <repository-url>
+
+6. Build Python 2.7.18 from included source
+   - cd livecode/thirdparty/python2
+   - ./install-local.sh
+
+7. Run the build script
+   - cd livecode
+   - ./build_openxtalk_no_patches.sh
+
+================================================================================
+VERIFICATION COMMANDS
+================================================================================
+
+Before building, verify all dependencies are installed:
+
+# Check Xcode
+xcodebuild -version
+
+# Check Command Line Tools
+xcode-select -p
+
+# Check Java JDK
+java -version
+javac -version
+ls /usr/local/opt/openjdk@11/include/jni.h
+
+# Check Python 2.7 (after building from source)
+python2.7 --version
+
+# Check make
+make --version
+
+# Check git
+git --version
+
+# Check codesign
+codesign --version
+
+# Check available SDKs
+xcodebuild -showsdks
+
+================================================================================
+KNOWN ISSUES & NOTES
+================================================================================
+
+1. Python 2.7 is EOL and not available via Homebrew on modern macOS
+   - Solution: Use included Python 2.7.18 source and build locally
+
+2. macOS SDK 12.1 may not be available with latest Xcode
+   - Solution: Projects may work with newer SDKs (e.g., macosx14.x)
+   - Alternative: Extract SDK from Xcode 13.2 if needed
+
+3. Mobile (iOS/Android) components may fail to build
+   - Solution: Build script continues if desktop app builds successfully
+   - Desktop-only build is sufficient for most use cases
+
+4. C89/C99 compatibility issues in legacy code
+   - Solution: Projects configured with GCC_C_LANGUAGE_STANDARD = c89
+   - SDK compatibility mode handles old C standards automatically
+
+5. Java JNI headers location
+   - Build script expects: /usr/local/opt/openjdk@11/include
+   - Creates symlink: /tmp/livecode-build/java-headers
+   - Verify path matches your Java installation
+
+================================================================================
+BUILD TIME ESTIMATES
+================================================================================
+
+On a modern Mac (M1/M2 or Intel i7+):
+- Python 2.7.18 build: 5-10 minutes
+- Full LiveCode build: 30-60 minutes
+- Total: ~1 hour for first build
+
+Subsequent builds (with cache): 5-15 minutes
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If build fails:
+
+1. Check all dependencies are installed (use verification commands above)
+2. Ensure Xcode license is accepted: sudo xcodebuild -license
+3. Verify Python 2.7 is in PATH: which python2.7
+4. Verify Java JNI headers exist: ls /usr/local/opt/openjdk@11/include/jni.h
+5. Clean build cache: rm -rf _cache/ _build/
+6. Check build logs in terminal output
+
+Common errors:
+- "Python not found" → Build Python 2.7.18 from thirdparty/python2
+- "JNI headers not found" → Install openjdk@11 via Homebrew
+- "SDK not found" → Check Xcode installation and available SDKs
+- "Code signing failed" → Ensure codesign tool is available
+
+================================================================================
+REFERENCES
+================================================================================
+
+- LiveCode Build Documentation: docs/development/build-mac.md
+- Python 2.7.18 Source: thirdparty/python2/src/Python-2.7.18/
+- Build Script: build_openxtalk_no_patches.sh
+- Java Setup Script: thirdparty/install-jdk.sh
+- Xcode SDK Setup: tools/setup_xcode_sdks.sh
+
+================================================================================

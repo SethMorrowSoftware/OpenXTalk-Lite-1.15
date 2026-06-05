@@ -1522,18 +1522,50 @@ Boolean MCObject::getforecolor(uint2 p_di, Boolean rev, Boolean hilite,
                         return True;
                 }
                 
-                // No themed colour available; fall back to white
-                c = MCscreen->getwhite();
+                // tperry 7-12-2025 -- Check dark mode before falling back to white
+                // This fixes ComboBox menu background in dark mode
+#ifndef _SERVER
+                bool t_use_dark_mode_here = false;
+                extern bool MCPlatformGetSystemAppearanceIsDark(void);
+                if (dc_type != CONTEXT_TYPE_PRINTER)
+                    t_use_dark_mode_here = MCPlatformGetSystemAppearanceIsDark();
+                
+                if (t_use_dark_mode_here)
+                {
+                    // Use dark background for menu windows in dark mode
+                    c.red = 0x3d3d;
+                    c.green = 0x3d3d;
+                    c.blue = 0x3d3d;
+                }
+                else
+#endif
+                {
+                    // No themed colour available; fall back to white
+                    c = MCscreen->getwhite();
+                }
             }
             else
                 parent->getforecolor(p_di, rev, hilite, c, r_pattern, x, y, dc_type, o, selected);
             return True;
         }
-        if (parent && parent != MCdispatcher)
+        //-- tperry 11th October 2025
+        // Don't recurse to parent if parent is MCdispatcher (stacks need to use default colors)
+        if (parent && parent != MCdispatcher && gettype() != CT_STACK)
             return parent->getforecolor(p_di, rev, hilite, c, r_pattern, x, y, dc_type, o, selected);
     }
 
+	//-- tperry 11th October 2025
+	// Apply dark mode colors for unset properties (desktop only)
+	// Check this BEFORE theme colors so dark mode overrides theme defaults
+#ifndef _SERVER
+	bool t_use_dark_mode = false;
+	extern bool MCPlatformGetSystemAppearanceIsDark(void);
+	if (dc_type != CONTEXT_TYPE_PRINTER)
+		t_use_dark_mode = MCPlatformGetSystemAppearanceIsDark();
+#endif
+
     // Try to get the colour from the system theme rather than these hard-coded values
+    // (but only if not in dark mode for background/foreground colors)
     MCPlatformControlType t_control_type;
     MCPlatformControlPart t_control_part;
     MCPlatformControlState t_control_state;
@@ -1586,7 +1618,25 @@ Boolean MCObject::getforecolor(uint2 p_di, Boolean rev, Boolean hilite,
         default:
             MCUnreachableReturn(False);
     }
-    if (o->getthemeselectorsforprop(which, t_control_type, t_control_part, t_control_state, t_theme_prop, t_theme_prop_type))
+    
+#ifndef _SERVER
+    // Skip theme colors for BACK/FORE in dark mode - use our dark mode colors instead
+    // EXCEPT for menu buttons which should always use native theme rendering
+    bool t_skip_theme = t_use_dark_mode && (which == P_BACK_COLOR || which == P_FORE_COLOR);
+    if (t_skip_theme && o->gettype() == CT_BUTTON)
+    {
+        MCButton *t_button = (MCButton *)o;
+        uint4 t_flags = t_button->getflags();
+        uint2 t_style = getstyleint(t_flags);
+        // Menu buttons should NOT skip theme - they need native rendering
+        if (t_style == F_MENU)
+            t_skip_theme = false;
+    }
+    if (!t_skip_theme &&
+#else
+    if (
+#endif
+        o->getthemeselectorsforprop(which, t_control_type, t_control_part, t_control_state, t_theme_prop, t_theme_prop_type))
     {
         if (selected)
             t_control_state |= kMCPlatformControlStateSelected;
@@ -1594,7 +1644,7 @@ Boolean MCObject::getforecolor(uint2 p_di, Boolean rev, Boolean hilite,
         if (MCPlatformGetControlThemePropColor(t_control_type, t_control_part, t_control_state, t_theme_prop, c))
             return True;
     }
-    
+
 	switch (di)
 	{
 
@@ -1605,21 +1655,68 @@ Boolean MCObject::getforecolor(uint2 p_di, Boolean rev, Boolean hilite,
 		if (rev)
 			c = MCscreen->getwhite();
 		else
-			c = MCscreen->getblack();
+		{
+#ifndef _SERVER
+			// Dark mode: use white foreground for unset foreColor
+			if (t_use_dark_mode)
+				c = MCscreen->getwhite();
+			else
+#endif
+				c = MCscreen->getblack();
+		}
 		break;
 	case DI_BACK:
-#ifdef _MAC_DESKTOP
-		if (IsMacLFAM() && dc_type != CONTEXT_TYPE_PRINTER)
+#ifndef _SERVER
+		// Dark mode: use appropriate background for unset backColor
+		if (t_use_dark_mode)
 		{
-			extern bool MCMacThemeGetBackgroundPattern(Window_mode p_mode, bool p_active, MCPatternRef &r_pattern);
-			x = 0;
-			y = 0;
-			
-			if (MCMacThemeGetBackgroundPattern(o -> getstack() -> getmode(), True, r_pattern))
-				return False;
+			// Buttons get a dark background (rgb 86,84,93) in dark mode
+			// Note: Menu buttons won't reach here - they use theme colors (handled above)
+			if (o->gettype() == CT_BUTTON)
+			{
+				// Standard/rectangle/check/radio buttons use dark gray background
+				// rgb(86, 84, 93) = 0x56, 0x54, 0x5D
+				// Convert to 16-bit: multiply by 257 (0x101)
+				c.red = 0x5656;
+				c.green = 0x5454;
+				c.blue = 0x5D5D;
+			}
+			else
+			{
+				// Stacks and other objects use darker gray
+				c.red = 0x3d3d;
+				c.green = 0x3d3d;
+				c.blue = 0x3d3d;
+			}
 		}
+		else
 #endif
-		c = MCscreen->getbg();
+		{
+#ifndef _SERVER
+			// Light mode: buttons get white background, others use default
+			if (o->gettype() == CT_BUTTON)
+			{
+				c = MCscreen->getwhite();
+			}
+			else
+			{
+#endif
+#ifdef _MAC_DESKTOP
+				if (IsMacLFAM() && dc_type != CONTEXT_TYPE_PRINTER)
+				{
+					extern bool MCMacThemeGetBackgroundPattern(Window_mode p_mode, bool p_active, MCPatternRef &r_pattern);
+					x = 0;
+					y = 0;
+					
+					if (MCMacThemeGetBackgroundPattern(o -> getstack() -> getmode(), True, r_pattern))
+						return False;
+				}
+#endif
+				c = MCscreen->getbg();
+#ifndef _SERVER
+			}
+#endif
+		}
 		break;
 	case DI_HILITE:
 		c = o->gettype() == CT_BUTTON ? MCaccentcolor : MChilitecolor;

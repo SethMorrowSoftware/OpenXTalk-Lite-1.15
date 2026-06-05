@@ -1505,16 +1505,21 @@ Boolean MCButton::mup(uint2 which, bool p_release)
 				else
 				{
 					if (MClook != LF_MOTIF && flags & F_AUTO_HILITE
-					        && !(flags & F_SHOW_ICON) && !(flags & F_AUTO_ARM)
-					        && (getstyleint(flags) == F_RADIO
-					            || getstyleint(flags) == F_CHECK))
+				        && !(flags & F_SHOW_ICON) && !(flags & F_AUTO_ARM)
+				        && (getstyleint(flags) == F_RADIO
+				            || getstyleint(flags) == F_CHECK))
 					{
 						if (MCU_point_in_rect(rect, mx, my))
 						{
 							if (getstyleint(flags) == F_CHECK)
 								state ^= CS_HILITED;
 							else
-								state |= CS_HILITED;
+							{
+								// tperry 7-12-2025 -- Fix radio button autohilite toggle
+								// Radio buttons should toggle their hilite state, not just set it ON
+								// If in a family, the radio() call below will handle group behavior
+								state ^= CS_HILITED;
+							}
 						}
 						// MW-2011-08-18: [[ Layers ]] Invalidate the whole object.
 						layer_redrawall();
