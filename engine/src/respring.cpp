@@ -66,7 +66,9 @@ Software Foundation. */
 #else /* OXT-TOM: Windows */
 #include "respring.h"
 #include "license.h"
+#if defined(_WINDOWS)
 #include "w32dc.h"
+#endif
 
 extern uint4 MCstartupstack_length;
 extern uint1 MCstartupstack[];
@@ -86,7 +88,7 @@ Boolean MCRespringIsPending(void)
 #else /* OXT-TOM: Windows */
 }
 
-// Function pointers in dskw32main.cpp — register ourselves at startup
+// Function pointers in dskmain.cpp — register ourselves at startup
 extern Boolean (*MCRespringIsPendingPtr)(void);
 extern Boolean (*MCRespringDoRespringPtr)(void);
 

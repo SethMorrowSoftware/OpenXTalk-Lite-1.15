@@ -343,6 +343,12 @@ bool X_init(const X_init_options& p_options)
 	return true;
 }
 
+// Respring support — function pointers set by respring.cpp in development
+// builds; shared by every desktop platform's X_main_loop.
+Boolean (*MCRespringIsPendingPtr)(void) = nil;
+Boolean (*MCRespringDoRespringPtr)(void) = nil;
+Boolean MCRespringInProgress = False;
+
 // Important: This function is on the emterpreter whitelist. If its
 // signature function changes, the mangled name must be updated in
 // em-whitelist.json
@@ -358,7 +364,6 @@ bool X_main_loop_iteration()
 #else /* OXT-TOM: Windows */
 
 	// Respring support — don't quit when stacks are empty during respring
-	extern Boolean MCRespringInProgress;
 	if (MCiconicstacks == 0 && !MCscreen->hasmessages() && MCstacks->isempty() && MCnsockets == 0 && !MCRespringInProgress)
 #endif /* OXT-TOM */
 	{
