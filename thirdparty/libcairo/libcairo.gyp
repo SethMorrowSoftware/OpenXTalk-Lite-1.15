@@ -501,16 +501,12 @@
 								},
 							],
 							[
-								# SSE2 optimisations are restricted to x86/x86_64 only
-								# ARM BUILD: Exclude x86-specific code when building for ARM64
+								# SSE2 optimisations are restricted to x86_64 macOS
 								'OS != "mac" or target_arch == "arm64"',
 								{
 									'sources/':
 									[
 										['exclude', '-sse2\\.c$'],
-										['exclude', '-ssse3\\.c$'],
-										['exclude', 'pixman-x86\\.c$'],
-										['exclude', 'pixman-mmx\\.c$'],
 									],
 								},
 							],
