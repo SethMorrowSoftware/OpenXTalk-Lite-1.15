@@ -464,6 +464,22 @@ tests that check errors failed in dozens).
   platform.
 - `engine/kernel-mode-template.gypi`: passes `<(OS)` to both.
 
+### macOS: the standalone and installer engines link without respring.cpp
+
+Why: on macOS Tom Perry's `desktop.cpp`, which every desktop engine
+compiles, calls `MCRespringIsPending()` and `MCRespringDoRespring()` from
+the main loop, but his `respring.cpp`, which defines them, is compiled only
+into the development engine, in his Xcode projects
+(`kernel-development.xcodeproj`) as here. So the standalone and installer
+engines do not link ("Undefined symbols ... MCRespringIsPending()"). They
+have no `_internal respring` (in `internal_development.cpp`, development
+engine only), so no respring can be pending in them.
+
+- `engine/src/respring-none.cpp` (new): on macOS only, the two functions,
+  returning False: no respring is pending, none is done. Empty elsewhere.
+- `engine/engine-sources.gypi`: compiles it into the standalone and
+  installer engines. The development engine keeps his `respring.cpp`.
+
 ### Import the CI, tests and packaging tools of OXT-Beyond
 
 Why: the tests, and the line endings and file types that a Windows

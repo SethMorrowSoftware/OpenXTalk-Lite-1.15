@@ -872,12 +872,14 @@
 			'src/mode_installer_lnx.cpp',
 			'src/mode_installer_osx.mm',
 			'src/mode_installer_w32.cpp',
+			'src/respring-none.cpp',
 		],
 		
 		# Sources for the standalone engine
 		'engine_standalone_mode_source_files':
 		[
 			'src/mode_standalone.cpp',
+			'src/respring-none.cpp',
 		],
 		
 		# Sources for the server builds only
