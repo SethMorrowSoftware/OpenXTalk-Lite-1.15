@@ -1,39 +1,41 @@
 #!/usr/bin/env python3
-"""Check that the code is still Tom Perry's OpenXTalk Lite 1.15.
+"""Check that every difference from Tom Perry's source is documented.
 
-  python3 tools/ci/pristine_guard.py [--base REF] [--head REF]
+  python3 tools/ci/pristine_guard.py [--head REF] [--changes FILE]
       [--allowlist FILE] [--summary]
 
-The tag tom-perry-1.15 is OpenXTalk Lite 1.15 as Tom Perry left it: its
-tree is exactly windows/ of openxtalk/OpenXTalk-Lite at 6f8f4cc851
-(EXPECTED_TREE). Everything after it must stay inside the paths that
-.github/pristine-allowlist.txt allows: the repository's own files (CI,
-tests, packaging, documentation) and, one by one, the files that the
-build changes touch. This script
+Tom Perry's source is two tags (CHANGES-FROM-TOM.md says what they are):
+tom-perry-1.15, his Windows working copy with the OpenXTalk Lite IDE
+1.15, and tom-perry-1.15-macos, his Apple Silicon working copy, each the
+tree of a folder of openxtalk/OpenXTalk-Lite (EXPECTED_TREES). The tag
+tom-perry-1.15-merged merges them. This script checks:
 
-  1. checks that --base (default tom-perry-1.15) still has EXPECTED_TREE,
-     so the reference cannot move;
-  2. lists every path that differs between --base and --head (default
-     HEAD), without rename detection (a renamed file counts as a deleted
-     and an added path), and fails on each one no allowlist pattern
-     matches;
-  3. reports each build-change path (the "build" section of the
-     allowlist) with its line counts, and warns about allowlist entries
-     of that section that match nothing (a file the build no longer
-     changes should leave the list).
+  1. The references: each tag still has its expected tree, and the merge's
+     parents are the two of them, so that nothing can move the reference.
+  2. The merge: for every path, the merged tree must have what Tom Perry's
+     trees give (the version of the one tree that changed the path from
+     the trees' common base, or the version both have), unless section 1
+     of CHANGES-FROM-TOM.md has a row for the path, "| `path` | windows |",
+     "macos" or "combined": then the merged tree must have his Windows
+     version, his macOS version, or something that is neither. A path
+     both trees changed differently must have a row.
+  3. After the merge: every path that differs between tom-perry-1.15-merged
+     and --head (default HEAD), without rename detection, must be either
+     named (in backquotes) in section 2 of CHANGES-FROM-TOM.md, or an added
+     path matched by a pattern of .github/pristine-allowlist.txt (this
+     repository's own folders). A file of Tom Perry's that is changed or
+     deleted must always be named.
 
-The allowlist has one pattern per line; text after "#" is a comment; a
-line "[harness]" or "[build]" starts a section (patterns before any
-section header count as harness). A pattern is a path relative to the
-repository root; "*" matches within one path segment, "**" any number of
-segments, and a pattern ending in "/**" a whole folder.
+It warns about rows and names in CHANGES-FROM-TOM.md that match nothing,
+and lists the documented changes with their line counts. --summary
+appends the report to the GitHub Actions job summary.
 
---summary appends the report to the GitHub Actions job summary.
+The allowlist has one path pattern per line ("*" within a path segment,
+"**" across segments; "#" starts a comment).
 
-Exit status: 0 the code is pristine apart from the allowed paths, 1 a
-check failed, 2 usage or git errors.
-
-Only the Python 3 standard library is used.
+Exit status: 0 everything is documented, 1 a check failed, 2 usage or git
+errors. Only the Python 3 standard library is used. The checks need the
+trees of the tags and of --head, not the files' contents.
 """
 
 import argparse
@@ -42,11 +44,16 @@ import re
 import subprocess
 import sys
 
-BASE_TAG = 'tom-perry-1.15'
-# windows/ of openxtalk/OpenXTalk-Lite at 6f8f4cc851 ("OpenXTalk Lite
-# Windows engine work by Tom Perry"): LiveCode Community 9.7 develop
-# 4606a10ea with the OpenXTalk Lite 1.15 IDE and Tom Perry's engine work
-EXPECTED_TREE = '7578af0924f537495f952e06ea4588b3e075e906'
+WINDOWS_TAG = 'tom-perry-1.15'
+MACOS_TAG = 'tom-perry-1.15-macos'
+MERGED_TAG = 'tom-perry-1.15-merged'
+EXPECTED_TREES = {
+    # windows/ of openxtalk/OpenXTalk-Lite at 6f8f4cc851
+    WINDOWS_TAG: '7578af0924f537495f952e06ea4588b3e075e906',
+    # macos-arm64/ of openxtalk/OpenXTalk-Lite at 4f2feee273
+    MACOS_TAG: '741d369ee3ed1acbc98cd9375874943cfac32d1a',
+}
+DEFAULT_CHANGES = 'CHANGES-FROM-TOM.md'
 DEFAULT_ALLOWLIST = '.github/pristine-allowlist.txt'
 
 
@@ -62,140 +69,200 @@ def git(*args):
     return out.stdout.decode('utf-8', 'surrogateescape')
 
 
+def tree_entries(ref):
+    """{path: (mode, object id)} of every file, link and submodule of ref"""
+    entries = {}
+    for record in git('ls-tree', '-r', '-z', '--full-tree', ref).split('\0'):
+        if not record:
+            continue
+        meta, path = record.split('\t', 1)
+        mode, _, oid = meta.split(' ')
+        entries[path] = (mode, oid)
+    return entries
+
+
 def glob_to_regex(pattern):
-    """A path pattern as a regular expression: "**" any number of path
-    segments (also none), "*" anything within one segment, "?" one
-    character other than "/"."""
     out = []
     i = 0
     while i < len(pattern):
-        c = pattern[i]
         if pattern.startswith('**/', i):
             out.append('(?:.*/)?')
             i += 3
         elif pattern.startswith('**', i):
             out.append('.*')
             i += 2
-        elif c == '*':
+        elif pattern[i] == '*':
             out.append('[^/]*')
             i += 1
-        elif c == '?':
+        elif pattern[i] == '?':
             out.append('[^/]')
             i += 1
         else:
-            out.append(re.escape(c))
+            out.append(re.escape(pattern[i]))
             i += 1
     return re.compile('^' + ''.join(out) + '$')
 
 
 def read_allowlist(path):
-    """[(section, pattern, regex, line number)]"""
-    entries = []
-    section = 'harness'
+    patterns = []
     with open(path, encoding='utf-8') as f:
-        for number, line in enumerate(f, 1):
+        for line in f:
             line = line.split('#', 1)[0].strip()
-            if not line:
-                continue
-            m = re.match(r'^\[(harness|build)\]$', line)
-            if m:
-                section = m.group(1)
-                continue
-            if line.startswith('/') or '\\' in line:
-                raise GuardError('%s:%d: %r: write paths relative to the repository root, with "/"'
-                                 % (path, number, line))
-            entries.append((section, line, glob_to_regex(line), number))
-    return entries
+            if line:
+                patterns.append((line, glob_to_regex(line)))
+    return patterns
 
 
-def changed_paths(base, head):
-    """[(status, path)] of what differs between base and head, without
-    rename detection"""
-    out = git('diff', '--no-renames', '--name-status', '-z', base, head)
-    fields = out.split('\0')
-    changes = []
-    i = 0
-    while i + 1 < len(fields):
-        status, path = fields[i], fields[i + 1]
-        changes.append((status, path))
-        i += 2
-    return changes
-
-
-def numstat(base, head, paths):
-    if not paths:
-        return {}
-    out = git('diff', '--no-renames', '--numstat', '-z', base, head, '--', *paths)
-    stats = {}
-    for record in out.split('\0'):
-        if not record:
+def read_changes(path):
+    """(section 1 rows {path: (taken, line)}, section 2 names {name: line})"""
+    with open(path, encoding='utf-8') as f:
+        lines = f.read().split('\n')
+    section = 0
+    rows, names = {}, {}
+    for number, line in enumerate(lines, 1):
+        m = re.match(r'^## (\d+)\.', line)
+        if m:
+            section = int(m.group(1))
             continue
-        added, removed, path = record.split('\t', 2)
-        stats[path] = (added, removed)
-    return stats
+        if section == 1:
+            m = re.match(r'^\|\s*`([^`]+)`\s*\|\s*(windows|macos|combined)\s*\|', line)
+            if m:
+                if m.group(1) in rows:
+                    raise GuardError('%s:%d: a second row for %s' % (path, number, m.group(1)))
+                rows[m.group(1)] = (m.group(2), number)
+        elif section == 2:
+            for name in re.findall(r'`([^`\s]+)`', line):
+                names.setdefault(name, number)
+    if not rows:
+        raise GuardError('%s: no rows in section 1 ("## 1.")' % path)
+    return rows, names
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--base', default=BASE_TAG, help='the pristine reference (default %(default)s)')
     ap.add_argument('--head', default='HEAD', help='the commit to check (default %(default)s)')
+    ap.add_argument('--changes', default=DEFAULT_CHANGES, help='default %(default)s')
     ap.add_argument('--allowlist', default=DEFAULT_ALLOWLIST, help='default %(default)s')
     ap.add_argument('--summary', action='store_true', help='append the report to the job summary')
     args = ap.parse_args(argv)
     gha = os.environ.get('GITHUB_ACTIONS') == 'true'
+    problems = []
 
     def error(message):
+        problems.append(message)
         print('::error title=Pristine guard::%s' % message if gha else 'error: %s' % message)
 
     def warning(message):
         print('::warning title=Pristine guard::%s' % message if gha else 'warning: %s' % message)
 
     try:
-        tree = git('rev-parse', '%s^{tree}' % args.base).strip()
+        rows, names = read_changes(args.changes)
+        patterns = read_allowlist(args.allowlist)
+        windows = git('rev-parse', '%s^{commit}' % WINDOWS_TAG).strip()
+        macos = git('rev-parse', '%s^{commit}' % MACOS_TAG).strip()
+        merged = git('rev-parse', '%s^{commit}' % MERGED_TAG).strip()
         head = git('rev-parse', '%s^{commit}' % args.head).strip()
-        entries = read_allowlist(args.allowlist)
-        changes = changed_paths(args.base, args.head)
+        parents = git('rev-list', '--parents', '-n', '1', merged).split()[1:]
+        base = git('rev-parse', '%s^' % macos).strip()
+        trees = {tag: git('rev-parse', '%s^{tree}' % tag).strip() for tag in EXPECTED_TREES}
     except (GuardError, OSError) as e:
         error(str(e))
         return 2
 
-    failed = False
-    if tree != EXPECTED_TREE:
-        error('%s has the tree %s, not %s (windows/ of openxtalk/OpenXTalk-Lite at 6f8f4cc851): '
-              'the reference has moved' % (args.base, tree, EXPECTED_TREE))
-        failed = True
+    # 1. The references
+    for tag, expected in EXPECTED_TREES.items():
+        if trees[tag] != expected:
+            error('%s has the tree %s, not %s: the reference has moved' % (tag, trees[tag], expected))
+    if parents != [windows, macos]:
+        error('%s must merge %s and %s (in that order), but its parents are %s'
+              % (MERGED_TAG, WINDOWS_TAG, MACOS_TAG, ', '.join(p[:12] for p in parents) or 'none'))
+    if problems:
+        return 1
 
-    harness, build, outside = [], [], []
-    used = set()
-    for status, path in changes:
-        match = next((e for e in entries if e[2].match(path)), None)
-        if match is None:
-            outside.append((status, path))
+    # 2. The merge
+    t_base, t_win, t_mac, t_merged = (tree_entries(r) for r in (base, windows, macos, merged))
+    resolutions = []
+    for path in sorted(set(t_base) | set(t_win) | set(t_mac) | set(t_merged)):
+        b, w, m, r = (t.get(path) for t in (t_base, t_win, t_mac, t_merged))
+        if w == m:
+            natural = w
+        elif w == b:
+            natural = m
+        elif m == b:
+            natural = w
+        else:
+            natural = 'contested'
+        row = rows.get(path)
+        if row is None:
+            if natural == 'contested':
+                error('%s: both of Tom Perry\'s trees change %s differently, and section 1 of %s has no row '
+                      'saying what the merge takes' % (MERGED_TAG, path, args.changes))
+            elif r != natural:
+                error('%s: %s differs from what Tom Perry\'s trees give, and section 1 of %s has no row for it'
+                      % (MERGED_TAG, path, args.changes))
             continue
-        used.add(match[3])
-        (build if match[0] == 'build' else harness).append((status, path))
+        taken, line = row
+        ok = {'windows': r == w, 'macos': r == m, 'combined': r != w and r != m}[taken]
+        if not ok:
+            error('%s:%d: %s is "%s", but the merged tree has %s'
+                  % (args.changes, line, path, taken,
+                     'his Windows version' if r == w else 'his macOS version' if r == m else 'neither of his versions'))
+        elif natural != 'contested' and r == natural:
+            warning('%s:%d: %s needs no row: it is what Tom Perry\'s trees give' % (args.changes, line, path))
+        resolutions.append((path, taken))
+    for path, (taken, line) in rows.items():
+        if path not in t_base and path not in t_win and path not in t_mac and path not in t_merged:
+            warning('%s:%d: %s is in none of the trees' % (args.changes, line, path))
 
-    for status, path in outside:
-        error('%s %s: not allowed to differ from %s (add it to %s, in a commit that says why, '
-              'only if the build needs it)' % (status, path, args.base, args.allowlist))
-    if outside:
-        failed = True
-    stale = [e for e in entries if e[0] == 'build' and e[3] not in used]
-    for section, pattern, _, number in stale:
-        warning('%s:%d: %s matches no changed path; remove it if the build no longer changes it'
-                % (args.allowlist, number, pattern))
+    # 3. After the merge
+    changes = []
+    out = git('diff', '--no-renames', '--name-status', '-z', merged, head).split('\0')
+    for i in range(0, len(out) - 1, 2):
+        changes.append((out[i], out[i + 1]))
+    documented, harness = [], []
+    for status, path in changes:
+        if path in names:
+            documented.append((status, path))
+        elif status == 'A' and any(rx.match(path) for _, rx in patterns):
+            harness.append((status, path))
+        elif status == 'A':
+            error('%s is added outside this repository\'s own folders (%s) and not named in section 2 of %s'
+                  % (path, args.allowlist, args.changes))
+        else:
+            error('%s %s: a file of Tom Perry\'s is %s but not named in section 2 of %s'
+                  % (status, path, 'deleted' if status == 'D' else 'changed', args.changes))
+    changed = {p for _, p in changes}
+    for name, line in sorted(names.items(), key=lambda kv: kv[1]):
+        looks_like_path = '/' in name or re.match(r'^\.?[\w-]+\.\w+$', name)
+        if looks_like_path and name not in changed and name in t_merged:
+            warning('%s:%d: %s is named in section 2 but does not differ from %s'
+                    % (args.changes, line, name, MERGED_TAG))
 
-    stats = numstat(args.base, args.head, [p for _, p in build])
+    stats = {}
+    paths = [p for s, p in documented if s != 'D']
+    if paths:
+        for record in git('diff', '--no-renames', '--numstat', '-z', merged, head, '--', *paths).split('\0'):
+            if record:
+                added, removed, path = record.split('\t', 2)
+                stats[path] = (added, removed)
+
     lines = ['### Pristine guard', '',
-             '`%s` (tree `%s`) against `%s`: %d paths differ, %d of them repository files (CI, tests, '
-             'packaging, documentation), %d build changes, %d not allowed.'
-             % (args.base, tree[:12], head[:12], len(changes), len(harness), len(build), len(outside)), '']
-    if outside:
-        lines += ['**Not allowed:**', ''] + ['- `%s` %s' % (p, s) for s, p in outside] + ['']
-    if build:
-        lines += ['<details><summary>Build changes to Tom Perry\'s files</summary>', '',
+             '`%s` (Windows, tree `%s`) and `%s` (macOS, tree `%s`), merged as `%s`, against `%s`.'
+             % (WINDOWS_TAG, trees[WINDOWS_TAG][:12], MACOS_TAG, trees[MACOS_TAG][:12], MERGED_TAG, head[:12]),
+             '',
+             '- The merge: %d paths resolved as section 1 of %s says (%s).'
+             % (len(resolutions), args.changes,
+                ', '.join('%d %s' % (sum(1 for _, t in resolutions if t == k), k)
+                          for k in ('windows', 'macos', 'combined'))),
+             '- After the merge: %d paths differ, %d of them files of this repository\'s own, %d of Tom Perry\'s '
+             'changed or added and named in section 2, %d not documented.'
+             % (len(changes), len(harness), len(documented), len(problems)), '']
+    if problems:
+        lines += ['**Problems:**', ''] + ['- %s' % p for p in problems] + ['']
+    if documented:
+        lines += ['<details><summary>Documented changes to Tom Perry\'s files</summary>', '',
                   '| path | status | lines added | lines removed |', '| --- | --- | ---: | ---: |']
-        for status, path in build:
+        for status, path in documented:
             added, removed = stats.get(path, ('', ''))
             lines.append('| `%s` | %s | %s | %s |' % (path, status, added, removed))
         lines += ['', '</details>', '']
@@ -204,7 +271,7 @@ def main(argv=None):
     if args.summary and os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8', newline='\n') as f:
             f.write(report + '\n')
-    return 1 if failed else 0
+    return 1 if problems else 0
 
 
 if __name__ == '__main__':

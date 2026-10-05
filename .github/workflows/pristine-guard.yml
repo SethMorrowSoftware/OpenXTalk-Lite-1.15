@@ -1,9 +1,10 @@
-# Checks that the code is still Tom Perry's OpenXTalk Lite 1.15: every path
-# that differs from the tag tom-perry-1.15 must be allowed by
-# .github/pristine-allowlist.txt (this repository's own files, and one by
-# one the files the build changes touch), and the tag must still have the
-# tree of windows/ in openxtalk/OpenXTalk-Lite at 6f8f4cc851. See
-# tools/ci/pristine_guard.py. The job summary lists the build changes with
+# Checks that every difference from Tom Perry's source is documented in
+# CHANGES-FROM-TOM.md (tools/ci/pristine_guard.py): that the tags
+# tom-perry-1.15 (his Windows working copy) and tom-perry-1.15-macos (his
+# Apple Silicon one) still have the trees of the record repository, that
+# their merge tom-perry-1.15-merged resolves exactly the paths section 1
+# lists, as it says, and that every file of his changed after the merge is
+# named in section 2. The job summary lists the documented changes with
 # their line counts.
 #
 # Runs on every push to main and every pull request, by hand, and from
@@ -29,9 +30,9 @@ jobs:
     timeout-minutes: 15
     steps:
       # A blobless clone with only the guard's own files checked out:
-      # comparing two commits needs their trees, not the files' contents,
-      # and git fetches the few contents the line counts need when asked.
-      # The token stays in .git/config for that; this job only reads.
+      # comparing commits needs their trees, not the files' contents, and
+      # git fetches the few contents the line counts need when asked. The
+      # token stays in .git/config for that; this job only reads.
       - name: Check out
         uses: actions/checkout@v7
         with:
@@ -40,10 +41,16 @@ jobs:
             .github
             tools/ci
 
-      - name: Fetch the tag tom-perry-1.15
+      # Depth 3 reaches the merge's parents and their common base (the
+      # parent of tom-perry-1.15-macos)
+      - name: Fetch Tom Perry's tags
         run: |
-          git fetch --no-tags --depth=1 origin '+refs/tags/tom-perry-1.15:refs/tags/tom-perry-1.15'
-          git log -1 --format='%H %an %ad %s' tom-perry-1.15
+          refspecs=()
+          for tag in tom-perry-1.15 tom-perry-1.15-macos tom-perry-1.15-merged; do
+            refspecs+=("+refs/tags/$tag:refs/tags/$tag")
+          done
+          git fetch --no-tags --depth=3 origin "${refspecs[@]}"
+          git log --no-walk --format='%H %an %ad %s' tom-perry-1.15 tom-perry-1.15-macos tom-perry-1.15-merged
 
-      - name: Check the paths that differ from tom-perry-1.15
+      - name: Check every difference from Tom Perry's source
         run: python3 tools/ci/pristine_guard.py --summary

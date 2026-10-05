@@ -1,110 +1,17 @@
-# The paths that may differ from the tag tom-perry-1.15, which is OpenXTalk
-# Lite 1.15 as Tom Perry left it. tools/ci/pristine_guard.py checks every
-# change against this list (the "Pristine guard" workflow, on every push and
-# pull request, and before every release); a path that no pattern matches
-# fails it.
+# Folders of this repository's own, where files may be added freely: CI,
+# tests, packaging and documentation, none of it built into the product.
+# tools/ci/pristine_guard.py allows an added path that matches one of these
+# patterns. Every other difference from Tom Perry's source (a file of his
+# changed or deleted, or a file added anywhere else) must be named, with
+# its reason, in CHANGES-FROM-TOM.md.
 #
 # One pattern per line, relative to the repository root; "*" matches within
 # one path segment, "**" across segments; text after "#" is a comment.
-#
-# [harness] is this repository's own files: CI, tests, packaging and
-# documentation. Nothing in them is built into the product.
-#
-# [build] is Tom Perry's files that the build changes touch, one by one:
-# what current compilers, SDKs and systems need to build his code, and
-# nothing else. Each is changed by a commit after tom-perry-1.15 that says
-# why (most are ported from OXT-Beyond and name the commit there). Add a
-# path here only in the commit that changes it, and only for the build;
-# fixes and features belong in OXT-Beyond, not here.
 
-[harness]
 .github/**
 tools/ci/**
 tools/oxt/**
 tests/**
 Installer/openxtalk-lite/**
 Installer/linux/**
-README.md
-.gitattributes
-.gitignore
-
-[build]
-.gitmodules
-Makefile
-Makefile.common
-config.py
-config/WorkspaceSettings.xcsettings
-config/arch.gypi
-config/linux-settings.gypi
-config/mac.gypi
-config/win32.gypi
-configure.bat
-engine/engine.gyp
-engine/rsrc/android-manifest.xml
-engine/src/combiners.cpp
-engine/src/deploy_macosx.cpp
-engine/src/desktop-dc.cpp
-engine/src/desktop.cpp
-engine/src/dsklnxmain.cpp
-engine/src/dskmac.cpp
-engine/src/dskmain.cpp
-engine/src/dskw32main.cpp
-engine/src/eventqueue.cpp
-engine/src/font.cpp
-engine/src/prefix.h
-engine/src/respring.cpp
-engine/src/stack2.cpp
-engine/src/stacklst.cpp
-engine/src/w32prefix.h
-libbrowser/libbrowser.gyp
-libbrowser/src/libbrowser_lnx_factories.cpp
-libbrowser/src/libbrowser_osx_webview.mm
-libcore/src/core.cpp
-libcpptest/googletest
-libfoundation/include/foundation.h
-libfoundation/src/foundation-string.cpp
-libfoundation/src/system-commandline.cpp
-libfoundation/src/system-file-w32.cpp
-libscript/src/script-builder.cpp
-libscript/src/script-execute.cpp
-make.cmd
-prebuilt/SHA256SUMS
-prebuilt/build-libraries.sh
-prebuilt/fetch-libraries.sh
-prebuilt/libcef.gyp
-prebuilt/package-libs.sh
-prebuilt/scripts/build-cef.sh
-prebuilt/scripts/build-curl.sh
-prebuilt/scripts/build-icu.sh
-prebuilt/scripts/build-openssl.sh
-prebuilt/scripts/build-thirdparty.sh
-prebuilt/scripts/lib_versions.bat
-prebuilt/scripts/lib_versions.inc
-prebuilt/scripts/platform.inc
-prebuilt/thirdparty.gyp
-prebuilt/versions/openssl
-prebuilt/versions/openssl_win32
-prebuilt/versions/thirdparty
-revbrowser/revbrowser.gyp
-revbrowser/src/osxbrowser.h
-revdb/revdb.gyp
-revdb/src/dbmysql.h
-revdb/src/odbc_connection.cpp
-thirdparty/libcairo/libcairo.gyp
-thirdparty/libcurl/include/curl/curlbuild.win.h
-thirdparty/libffi/git_master/darwin_ios/src/aarch64/sysv_arm64.S
-thirdparty/libffi/libffi.gyp
-thirdparty/libmysql/src/config-osx.h
-thirdparty/libpng/src/pngpriv.h
-thirdparty/libz/src/zutil.h
-toolchain/gentle/gentle/gen.h
-toolchain/gentle/gentle/gentle.gyp
-toolchain/gentle/gentle/grts.c
-toolchain/gentle/gentle/grts.gyp
-toolchain/gentle/gentle/main.c
-toolchain/gentle/gentle/output.c
-toolchain/gentle/reflex/reflex.gyp
-toolchain/lc-compile/src/lc-compile-lib.gyp
-toolchain/lc-compile/src/main.c
-util/invoke-unix.bat
-util/remove_matching.py
+CHANGES-FROM-TOM.md
