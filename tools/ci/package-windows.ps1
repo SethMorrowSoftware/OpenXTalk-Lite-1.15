@@ -160,7 +160,7 @@ $Platform = 'win-x86_64'
 $BinName = "$Platform-bin"
 $Product = 'OpenXTalk-Lite'
 $ExeName = "$Product.exe"
-$LicenseFiles = @('LICENSE', 'LICENSE-EXCEPTION.md', 'THIRD-PARTY-NOTICES.md')
+$LicenseFiles = @('LICENSE')
 
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 

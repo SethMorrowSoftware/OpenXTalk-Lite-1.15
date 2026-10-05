@@ -1,78 +1,61 @@
-# Builds OXT-Beyond for Windows x86-64 (Release) on a GitHub-hosted
-# windows-2022 runner, checks the result and packages it:
+# Builds OpenXTalk Lite 1.15 (Tom Perry's source at the tag tom-perry-1.15,
+# with the build changes after it) for Windows x86-64 (Release) on a
+# GitHub-hosted windows-2022 runner, checks the result and packages it.
+# Adapted from OXT-Beyond's workflow of the same name; see README.md.
 #
-#   OXT-Beyond-<ver>-win-x86_64-setup.exe     installer (Inno Setup)
-#   OXT-Beyond-<ver>-win-x86_64-portable.zip  the installed program folder,
-#                                             under one top folder
-#                                             OXT-Beyond-<ver>
-#   OXT-Beyond-<ver>-win-x86_64-binaries.zip  win-x86_64-bin without *.pdb,
-#                                             plus the licence files
-#   OXT-Beyond-<ver>-win-x86_64-symbols.zip   the *.pdb files
-#   OXT-Beyond-<ver>-xtalk-sources.zip        (release builds) every file
-#                                             the xTalk Suite extensions
-#                                             pin, so that the release can
-#                                             be rebuilt without the member
-#                                             repositories; the release
-#                                             takes it from here only, for
-#                                             all platforms
+#   OpenXTalk-Lite-<ver>-win-x86_64-setup.exe     installer (Inno Setup)
+#   OpenXTalk-Lite-<ver>-win-x86_64-portable.zip  the installed program
+#                                                 folder, under one top
+#                                                 folder OpenXTalk-Lite-<ver>
+#   OpenXTalk-Lite-<ver>-win-x86_64-binaries.zip  win-x86_64-bin without
+#                                                 *.pdb, plus LICENSE
+#   OpenXTalk-Lite-<ver>-win-x86_64-symbols.zip   the *.pdb files
 #   SHA256SUMS
 #
-# <ver> is the product version in ide/.version. The build number written into
-# the packaged .buildnumber (OXT_BUILD_NUMBER) is the input build-number when
-# release.yml gives one (the same for every platform of a release), else the
-# UTC time at which the build job started, as YYYYMMDDHHMM.
+# <ver> is ide/.version, which is Tom Perry's (1.15). The installed layout
+# is OpenXTalk Lite 1.15's (tools/oxt/package.py: the engine is
+# OpenXTalk-Lite.exe, as there), with the standalone runtimes for other
+# platforms from the external asset oxt-runtimes-1.15, OpenXTalk Lite 1.15's
+# own. The build number written into the packaged .buildnumber
+# (OXT_BUILD_NUMBER) is the input build-number when release.yml gives one,
+# else the UTC time at which the build job started, as YYYYMMDDHHMM.
 #
-# After the build and its verification, the job
-#   1. writes the installed layout to dist/stage/OXT-Beyond-<ver> and the zips
-#      to dist (tools/ci/package-windows.ps1, which runs tools/oxt/package.py;
-#      the archives of the external assets listed in
-#      tools/oxt/external-assets.json are cached from
-#      prebuilt/fetched-assets/*.zip, the files of the xTalk Suite
-#      extensions pinned in tools/oxt/xtalk-extensions.json from
-#      prebuilt/fetched-assets/xtalk; see the Package step for leaving
-#      them out), and checks that every Windows DLL of the bundled
-#      extensions finds its imports (check-extension-imports.ps1),
-#   2. runs the headless smoke test on the portable zip (smoke-test.ps1),
-#      which also loads every bundled xTalk extension and calls it,
-#   3. compiles every IDE script in dist/stage and compares the errors with
-#      tools/ci/ide-compile-baseline.txt (ide-compile-check.ps1),
-#   4. checks the contrast of the IDE's colour pairs in the light and the
-#      dark appearance against tools/ci/ide-contrast-baseline.txt
-#      (ide-contrast-check.ps1),
-#   5. renders disabled labels and scrollbars with the staged engine and the
-#      native Windows theme, in dark and in light mode, and checks the
-#      pixels (render-test.ps1),
-#   6. builds the installer (build-installer.ps1), and
-#   7. installs it per user, smoke-tests the installed program and
-#      uninstalls it (test-installer.ps1).
-# Before the build, it lints the IDE sources with the Python 3 checks in
-# tools/ci (check_ide_*.py), which need no build, and builds the prebuilt
-# third-party libraries from source (OpenSSL, curl, ICU and those of
-# thirdparty/, prebuilt/build-libraries-windows.ps1, which also repackages
-# Spotify's CEF build) unless its cache has them.
-# A run that passes all of these uploads the files in dist (not dist/stage)
-# as the workflow artifact "OXT-Beyond-win-x86_64". Every run, including a
-# failed one, uploads the logs as "build-logs-win-x86_64" and the render
-# test's images as "render-test".
+# The prebuilt libraries are LiveCode's own Windows x86-64 (MSVC v141)
+# builds that Tom Perry's tree pins in prebuilt/versions (OpenSSL 1.1.1g,
+# curl 7.51.0, ICU 58.2, CEF 74.1.19 and the Thirdparty set): the files he
+# built against. LiveCode's server no longer serves them, so they are
+# fetched from OXT-Beyond's release prebuilts-v1, which mirrors them, and
+# each is checked against prebuilt/SHA256SUMS. SQLite is built from
+# thirdparty/libsqlite (Tom Perry's 3.51.1) instead of the Thirdparty set's
+# older library.
+#
+# After the build and its verification, the job writes the installed
+# layout to dist/stage/OpenXTalk-Lite-<ver> and the zips to dist
+# (tools/ci/package-windows.ps1), then checks it: the DLL imports of the
+# extensions, the headless smoke test of the portable zip, a standalone
+# from each runtime, the browser and the player, the IDE compile check, the
+# engine test suites of tests/, and the installer, built and then
+# installed, smoke-tested and uninstalled. A failure that is not in the
+# baselines (tools/ci/*-baseline*.txt, which record how Tom Perry's code
+# behaves) fails the job. Every check runs even when an earlier one failed,
+# so that a run reports all of them. A run that packaged uploads the files
+# in dist (not dist/stage) as the artifact "OpenXTalk-Lite-win-x86_64";
+# every run uploads the logs as "build-logs-win-x86_64".
+#
+# There is no 32-bit Windows build: LiveCode's 32-bit prebuilt libraries
+# are not available any more, and the packages take the 32-bit Windows
+# runtime from oxt-runtimes-1.15.
 #
 # Releases: .github/workflows/release.yml calls this workflow (workflow_call)
-# for a tag that starts with "v" and for its dry runs, together with the
-# Linux and macOS workflows, and publishes this artifact with theirs; this
-# workflow publishes nothing itself and no longer runs on tags of its own,
-# so that a tag builds every platform once. In a called run the github
-# context is the caller's: a tag build of a "v" tag fails straight away
-# unless the tag is "v" followed by ide/.version (for example v0.1.0), and
-# the input release makes the run build as for a release (the external
-# assets and the xTalk Suite extensions always included, and the xTalk
-# sources zip written) also for a dry run on a branch.
+# for a tag v<ver>-r<n> and for its dry runs, and publishes this artifact
+# with the other platforms'. In a called run the github context is the
+# caller's: a tag build of any other "v" tag fails straight away.
 #
-# The toolchain matches BUILDING.md: Visual Studio 2022 with the MSVC v141
+# The toolchain is OXT-Beyond's: Visual Studio 2022 with the MSVC v141
 # toolset added at run time, Windows SDK 10.0.17763.0, Python 2.7 in
-# C:\Python27, Strawberry Perl (preinstalled on the image) and Cygwin in
-# C:\cygwin64 (kept off PATH). The scripts it calls are in tools/ci.
-#
-# windows-2022 is pinned on purpose: windows-latest and windows-2025 now
-# provide Visual Studio 2026 with only the 10.0.26100 SDK.
+# C:\Python27 and Cygwin in C:\cygwin64 (kept off PATH). windows-2022 is
+# pinned on purpose: windows-latest and windows-2025 now provide Visual
+# Studio 2026 with only the 10.0.26100 SDK.
 
 name: Build (Windows)
 
@@ -91,12 +74,6 @@ on:
           published yet
         type: boolean
         default: false
-      no_xtalk_extensions:
-        description: >-
-          Package without the xTalk Suite extensions of
-          tools/oxt/xtalk-extensions.json
-        type: boolean
-        default: false
   workflow_call:
     inputs:
       build-number:
@@ -109,8 +86,7 @@ on:
         default: ''
       release:
         description: >-
-          Build as for a release: never leave out the external assets or the
-          xTalk Suite extensions, and write the xTalk sources zip
+          Build as for a release: never leave out the external assets
         type: boolean
         required: false
         default: false
@@ -149,9 +125,10 @@ jobs:
       WINSDK_COMPONENT: Microsoft.VisualStudio.Component.Windows10SDK.17763
       # Read by util/invoke-unix.bat, which runs the Cygwin bash, flex and bison
       CYGPATH: C:\cygwin64
-      # Read by prebuilt/fetch-libraries.sh: only the Release libraries are
-      # needed, and a tarball it had to download would have to match
-      # prebuilt/SHA256SUMS; the ones built here come from PREBUILT_LOCAL_DIR
+      # Read by prebuilt/fetch-libraries.sh: LiveCode's prebuilt libraries as
+      # OXT-Beyond's release prebuilts-v1 mirrors them, only the Release
+      # ones, and each tarball must match prebuilt/SHA256SUMS
+      PREBUILT_URL: https://github.com/SethMorrowSoftware/OpenXTalk-Beyond/releases/download/prebuilts-v1
       PREBUILT_WIN32_SUBPLATFORMS: v141_static_release
       PREBUILT_STRICT: '1'
     outputs:
@@ -164,9 +141,9 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      # Fails a tag build straight away when the tag does not match
-      # ide/.version, instead of after the build; release.yml checks it
-      # before any build starts, and again before publishing. (In a run
+      # Fails a tag build straight away when the tag is not v<ide/.version>-r<n>,
+      # instead of after the build; release.yml checks it before any build
+      # starts, and again before publishing. (In a run
       # that release.yml calls, github.ref_type and github.ref_name are the
       # caller's: the tag it was started for.)
       - name: Read the product version
@@ -180,8 +157,9 @@ jobs:
           if ($version -notmatch '^[0-9]+(\.[0-9]+){1,3}(-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
             throw "ide/.version contains '$version'; expected a version such as 0.0.1 or 0.1.0-beta.1"
           }
-          if ($env:REF_TYPE -eq 'tag' -and $env:REF_NAME -like 'v*' -and $env:REF_NAME -cne "v$version") {
-            throw "Tag $env:REF_NAME does not match ide/.version ($version); the tag for this version is v$version"
+          # A release tag is v<version>-r<n>, the nth release built from this repository
+          if ($env:REF_TYPE -eq 'tag' -and $env:REF_NAME -like 'v*' -and $env:REF_NAME -cnotmatch ('^v' + [regex]::Escape($version) + '-r[1-9][0-9]*$')) {
+            throw "Tag $env:REF_NAME does not match ide/.version ($version); the tags for this version are v$version-r1, v$version-r2 and so on"
           }
           # One build number for every file of this run: release.yml's, the
           # same for every platform of a release, else the UTC time now, at
@@ -196,7 +174,7 @@ jobs:
           else {
             $buildNumber = [DateTime]::UtcNow.ToString('yyyyMMddHHmm')
           }
-          Write-Host "OXT-Beyond $version, build number $buildNumber"
+          Write-Host "OpenXTalk Lite $version, build number $buildNumber"
           Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "version=$version`nbuild-number=$buildNumber" -Encoding utf8
           Add-Content -LiteralPath $env:GITHUB_ENV -Value "OXT_BUILD_NUMBER=$buildNumber" -Encoding utf8
 
@@ -224,48 +202,6 @@ jobs:
           git --version
           perl -v | Select-Object -Skip 1 -First 1
           python --version
-
-      # Checks of the IDE sources that need no build, so that they fail
-      # before the long build does. Every check runs; the step fails if any
-      # of them did. The image's Python 3 is the python on PATH (Python 2.7
-      # for the build is installed later, in C:\Python27, off PATH).
-      #   check_ide_colour_literals.py  colours set as literals outside
-      #                                 revIDEColor, a ratchet against
-      #                                 tools/ci/ide-colour-literals-baseline.txt
-      #   check_ide_stacks.py           the script patches of
-      #                                 tools/oxt/ide-stack-patches are
-      #                                 applied to the binary IDE stacks
-      #                                 (property patches need an engine:
-      #                                 the IDE contrast check runs them)
-      #   check_ide_icons.py            the toolbar's disabled icons have
-      #                                 their dark twins, readable on the
-      #                                 dark toolbars (32,32,32 and 61,61,61)
-      #   check_se_schemes.py           the script editor's colour schemes
-      #                                 on its light and dark backgrounds,
-      #                                 a ratchet against
-      #                                 tools/ci/se-schemes-baseline.txt
-      #   check_ide_prefs.py            the first-install preferences: a
-      #                                 light IDE and light user stacks,
-      #                                 the menubar as a standard window;
-      #                                 and no script uses appAppearance,
-      #                                 stackAppearance or systemAppearance
-      #                                 as a handler or variable name (an
-      #                                 engine with the properties would not
-      #                                 compile it, and -ui would hang)
-      - name: Lint IDE sources
-        id: ide_lint
-        run: |
-          python -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)"
-          if ($LASTEXITCODE -ne 0) { throw 'python on PATH is not Python 3.8 or later' }
-          $failed = @()
-          foreach ($check in @('check_ide_colour_literals.py', 'check_ide_stacks.py', 'check_ide_icons.py', 'check_se_schemes.py', 'check_ide_prefs.py')) {
-            Write-Host "::group::$check"
-            python "tools/ci/$check"
-            $code = $LASTEXITCODE
-            Write-Host '::endgroup::'
-            if ($code -ne 0) { $failed += $check }
-          }
-          if ($failed.Count -gt 0) { throw "Failed: $($failed -join ', ')" }
 
       - name: Install MSVC v141 toolset into Visual Studio 2022
         id: vs
@@ -303,96 +239,19 @@ jobs:
           # util/invoke-unix.bat finds it through CYGPATH; on PATH its tools
           # would shadow Git's and Strawberry Perl's
           add-to-path: 'false'
-          # make: ICU's build (prebuilt/build-libraries-windows.ps1)
-          packages: flex bison m4 gawk sed grep curl tar bzip2 make
+          packages: flex bison m4 gawk sed grep curl tar bzip2
 
-      # The prebuilt libraries are built here from source, as on Linux and
-      # macOS (prebuilt/build-libraries-windows.ps1): OpenSSL, curl and ICU
-      # from the releases pinned in prebuilt/versions, Thirdparty from
-      # thirdparty/, all with the v141 toolset, and CEF repackaged from
-      # Spotify's build (its SHA-1 pinned in prebuilt/cef-sha1sums), as
-      # Release x86_64 archives in prebuilt/packaged. The cache key covers
-      # what they are made from: the versions, the script and the CEF sums,
-      # the thirdparty/ tree and the build settings the Thirdparty libraries
-      # are compiled with. A cache miss builds them in this job (about 25
-      # minutes).
-      - name: Compute the prebuilt libraries cache key
-        id: prebuilt-key
-        env:
-          SCRIPTS_HASH: ${{ hashFiles('prebuilt/versions/*', 'prebuilt/build-libraries-windows.ps1', 'prebuilt/cef-sha1sums', 'prebuilt/thirdparty.gyp', 'config/*.gypi', 'tools/ci/build-windows.ps1', 'make.cmd') }}
-        run: |
-          $thirdparty = (git rev-parse HEAD:thirdparty).Substring(0, 12)
-          if ($LASTEXITCODE -ne 0) { throw 'git rev-parse HEAD:thirdparty failed' }
-          $key = "prebuilt-win32-x86_64-v141_static_release-$($env:SCRIPTS_HASH.Substring(0, 16))-$thirdparty"
-          Write-Host "Cache key: $key"
-          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "key=$key" -Encoding utf8
-
-      - name: Restore prebuilt libraries
+      # LiveCode's prebuilt libraries (see the header), kept in the cache
+      # under the checksums they must match.
+      - name: Restore cached prebuilt libraries
         id: prebuilt-cache
         uses: actions/cache/restore@v6
         with:
-          path: prebuilt/packaged
-          key: ${{ steps.prebuilt-key.outputs.key }}
-
-      # OpenSSL's assembler (AES-NI and the other fast, constant-time code)
-      - name: Install NASM
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 10
-        run: |
-          choco install nasm -y --no-progress
-          if ($LASTEXITCODE -ne 0) { throw "choco install nasm exited with code $LASTEXITCODE" }
-
-      - name: Build OpenSSL, curl and ICU from source, repackage CEF
-        id: prebuilt-build
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 90
-        env:
-          VSINSTALLDIR: ${{ steps.vs.outputs.install-path }}
-        run: |
-          ./prebuilt/build-libraries-windows.ps1 -Libraries OpenSSL, Curl, ICU, CEF -Arch x86_64 -Mode release
-          Get-ChildItem -LiteralPath prebuilt/packaged | Format-Table Name, Length -AutoSize | Out-String | Write-Host
-
-      # The engine's own build files compile thirdparty/ (msbuild target
-      # thirdparty-prebuilts, in build-win-x86_64, which the engine build
-      # below reuses); its fetch step takes OpenSSL's headers (libpq and
-      # libmysql use them) from the archives just built
-      - name: Build the Thirdparty libraries from thirdparty/
-        id: prebuilt-thirdparty
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 90
-        env:
-          VSINSTALLDIR: ${{ steps.vs.outputs.install-path }}
-        run: |
-          ./prebuilt/build-libraries-windows.ps1 -Libraries Thirdparty -Arch x86_64 -Mode release
-          Get-ChildItem -LiteralPath prebuilt/packaged | Format-Table Name, Length -AutoSize | Out-String | Write-Host
-
-      - name: Save prebuilt libraries to the cache
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        continue-on-error: true
-        uses: actions/cache/save@v6
-        with:
-          path: prebuilt/packaged
-          key: ${{ steps.prebuilt-key.outputs.key }}
-
-      # For developers who would rather not build them (BUILDING.md,
-      # "Prebuilt libraries"): extracted into prebuilt\packaged, a local
-      # build takes them as this one did
-      - name: Upload the prebuilt libraries
-        uses: actions/upload-artifact@v7
-        with:
-          name: prebuilt-libraries-win-x86_64
-          path: prebuilt/packaged/*.tar.bz2
-          if-no-files-found: error
-          retention-days: 30
-          # The archives are compressed already
-          compression-level: 0
+          path: prebuilt/fetched
+          key: prebuilt-win32-x86_64-${{ env.PREBUILT_WIN32_SUBPLATFORMS }}-${{ hashFiles('prebuilt/versions/*', 'prebuilt/SHA256SUMS') }}
 
       # A login shell puts Cygwin's /usr/bin first on PATH and starts in the
       # home folder, hence the cd. "set -e" comes after the profile scripts.
-      # The archives built above are copied from PREBUILT_LOCAL_DIR (and
-      # taken as built here: they have no SHA256SUMS entries); nothing is
-      # downloaded. PREBUILT_LOCAL_DIR stays set for the build, whose fetch
-      # step runs the same script again.
       - name: Fetch prebuilt libraries
         id: prebuilt
         timeout-minutes: 30
@@ -400,11 +259,17 @@ jobs:
         run: |
           set -eo pipefail
           cd "$(cygpath -u "$GITHUB_WORKSPACE")/prebuilt"
-          export PREBUILT_LOCAL_DIR="$PWD/packaged"
-          echo "PREBUILT_LOCAL_DIR=$(cygpath -w "$PREBUILT_LOCAL_DIR")" >> "$GITHUB_ENV"
           ./fetch-libraries.sh win32 x86_64
           ls -l fetched
           ls unpacked
+
+      - name: Save prebuilt libraries to the cache
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: prebuilt/fetched
+          key: ${{ steps.prebuilt-cache.outputs.cache-primary-key }}
 
       - name: Configure (config.py and gyp)
         id: configure
@@ -422,20 +287,11 @@ jobs:
         id: verify
         run: ./tools/ci/verify-build.ps1
 
-      # As with the prebuilt libraries, restore and save are separate steps
-      # so that verified downloads are cached even when a later step fails.
-      # tools/oxt/package.py verifies every cached archive against the
-      # SHA-256 in the manifest before using it. The xTalk extensions'
-      # files (prebuilt/fetched-assets/xtalk) have a cache of their own,
-      # keyed on their manifest, so a new pin does not download the
-      # runtimes archive again. The external-assets cache holds only the
-      # archives (prebuilt/fetched-assets/*.zip; "zip" is the only asset
-      # kind): actions/cache globs without implicit descendants and tar
-      # archives a listed folder whole, so an exclusion such as
-      # '!prebuilt/fetched-assets/xtalk' under a listed
-      # 'prebuilt/fetched-assets' would not keep the xTalk files out. The
-      # path must be the same in the save step (it is part of the cache
-      # version).
+      # Restore and save are separate steps so that verified downloads are
+      # cached even when a later step fails. tools/oxt/package.py verifies
+      # every cached archive against the SHA-256 in the manifest before
+      # using it. The path must be the same in the save step (it is part of
+      # the cache version).
       - name: Restore cached external assets
         id: assets-cache
         uses: actions/cache/restore@v6
@@ -443,43 +299,21 @@ jobs:
           path: prebuilt/fetched-assets/*.zip
           key: oxt-external-assets-${{ hashFiles('tools/oxt/external-assets.json') }}
 
-      - name: Restore cached xTalk extension files
-        id: xtalk-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: prebuilt/fetched-assets/xtalk
-          key: oxt-xtalk-extensions-${{ hashFiles('tools/oxt/xtalk-extensions.json') }}
-
-      # Writes dist/stage/OXT-Beyond-<ver> (the installed layout), the
-      # portable, binaries and symbols zips and SHA256SUMS.
-      #
-      # The external assets are left out (package-windows.ps1
-      # -NoExternalAssets) when a manual run sets the input
-      # no_external_assets, or when the repository variable
-      # OXT_NO_EXTERNAL_ASSETS is 1, for example while a new asset is not
-      # published yet. Likewise the xTalk Suite extensions with the input
-      # no_xtalk_extensions or the variable OXT_NO_XTALK_EXTENSIONS
-      # (package-windows.ps1 reads NO_XTALK_EXTENSIONS). Release builds (a
-      # tag, or the input release from release.yml, also in its dry runs)
-      # always include both, and also write
-      # OXT-Beyond-<ver>-xtalk-sources.zip (-XtalkSourcesZip): the pinned
-      # xTalk files, which the packages otherwise take live from the member
-      # repositories, kept with the release. It is written here only: the
-      # Linux and macOS packages take the same pinned files, and the
-      # release takes this one copy for all of them (a job of its own would
-      # fetch them all again, and the publishing job, which may write to
-      # the repository, should not fetch from other repositories).
-      # package-windows.ps1 finds the Visual C++ redistributable folder of
-      # the runner's Visual Studio with vswhere and bundles the runtime DLLs
-      # that enetxt and box2dxt import.
+      # Writes dist/stage/OpenXTalk-Lite-<ver> (the installed layout), the
+      # portable, binaries and symbols zips and SHA256SUMS. The external
+      # assets are left out (package-windows.ps1 -NoExternalAssets) when a
+      # manual run sets the input no_external_assets, or when the repository
+      # variable OXT_NO_EXTERNAL_ASSETS is 1, except in release builds (a
+      # tag, or the input release from release.yml, also in its dry runs).
+      # OpenXTalk Lite 1.15 has none of OXT-Beyond's xTalk Suite extensions,
+      # so NO_XTALK_EXTENSIONS is always true.
       - name: Package
         id: package
         timeout-minutes: 45
         env:
           OXT_ASSETS_CACHE: ${{ github.workspace }}\prebuilt\fetched-assets
           NO_EXTERNAL_ASSETS: ${{ github.ref_type != 'tag' && !inputs.release && (inputs.no_external_assets == true || vars.OXT_NO_EXTERNAL_ASSETS == '1') }}
-          NO_XTALK_EXTENSIONS: ${{ github.ref_type != 'tag' && !inputs.release && (inputs.no_xtalk_extensions == true || vars.OXT_NO_XTALK_EXTENSIONS == '1') }}
-          XTALK_SOURCES_ZIP: ${{ github.ref_type == 'tag' || inputs.release == true }}
+          NO_XTALK_EXTENSIONS: 'true'
         run: |
           $log = Join-Path $env:RUNNER_TEMP 'build-logs\package.log'
           New-Item -ItemType Directory -Force -Path (Split-Path -Parent $log) | Out-Null
@@ -488,10 +322,6 @@ jobs:
             Write-Host '::warning title=Package::External assets left out (no_external_assets input or OXT_NO_EXTERNAL_ASSETS variable): the packages have no standalone runtimes for other platforms.'
             $packageArgs['NoExternalAssets'] = $true
           }
-          if ($env:NO_XTALK_EXTENSIONS -eq 'true') {
-            Write-Host '::warning title=Package::xTalk Suite extensions left out (no_xtalk_extensions input or OXT_NO_XTALK_EXTENSIONS variable).'
-          }
-          if ($env:XTALK_SOURCES_ZIP -eq 'true') { $packageArgs['XtalkSourcesZip'] = $true }
           $global:LASTEXITCODE = 0
           ./tools/ci/package-windows.ps1 @packageArgs *>&1 | Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) { throw "package-windows.ps1 failed with exit code $LASTEXITCODE" }
@@ -504,35 +334,28 @@ jobs:
           path: prebuilt/fetched-assets/*.zip
           key: ${{ steps.assets-cache.outputs.cache-primary-key }}
 
-      - name: Save xTalk extension files to the cache
-        if: always() && steps.xtalk-cache.outputs.cache-hit != 'true' && hashFiles('prebuilt/fetched-assets/xtalk/**') != ''
-        continue-on-error: true
-        uses: actions/cache/save@v6
-        with:
-          path: prebuilt/fetched-assets/xtalk
-          key: ${{ steps.xtalk-cache.outputs.cache-primary-key }}
-
       # Every DLL in Extensions/**/code/*-win32 must import only Windows
       # system DLLs and DLLs in its own folder; otherwise it cannot load on
       # a PC without the missing DLL (for example the Visual C++
       # redistributable, which CI runners always have).
       - name: Check extension DLL imports
         id: check_imports
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         env:
           VERSION: ${{ steps.product.outputs.version }}
-        run: ./tools/ci/check-extension-imports.ps1 -Root "dist/stage/OXT-Beyond-$env:VERSION"
+        run: ./tools/ci/check-extension-imports.ps1 -Root "dist/stage/OpenXTalk-Lite-$env:VERSION"
 
-      # Extract the portable zip and run its engine (OXT-Beyond.exe) without
+      # Extract the portable zip and run its engine (OpenXTalk-Lite.exe) without
       # a user interface: the script engine, ICU, OpenSSL, SQLite (revDB and
-      # the driver in Externals\Database Drivers), revXML and revZip, and
-      # every bundled xTalk Suite extension (loaded and called).
+      # the driver in Externals\Database Drivers), revXML and revZip.
       - name: Smoke test (portable zip, headless)
         id: smoke
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         timeout-minutes: 15
         env:
           VERSION: ${{ steps.product.outputs.version }}
         run: |
-          $package = "dist/OXT-Beyond-$env:VERSION-win-x86_64-portable.zip"
+          $package = "dist/OpenXTalk-Lite-$env:VERSION-win-x86_64-portable.zip"
           if (-not (Test-Path -LiteralPath $package -PathType Leaf)) { throw "$package was not written" }
           ./tools/ci/smoke-test.ps1 -Package $package -LogFile "$env:RUNNER_TEMP\build-logs\smoke-test-portable.log"
 
@@ -544,10 +367,11 @@ jobs:
       # to a neutral folder and checks each runtime folder's binaries first.
       - name: Standalone check
         id: standalone
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         timeout-minutes: 15
         env:
           VERSION: ${{ steps.product.outputs.version }}
-        run: python tools/ci/standalone_check.py --package "dist/OXT-Beyond-$env:VERSION-win-x86_64-portable.zip" --platform win-x86_64 --targets all --log "$env:RUNNER_TEMP\build-logs\standalone-check.log"
+        run: python tools/ci/standalone_check.py --package "dist/OpenXTalk-Lite-$env:VERSION-win-x86_64-portable.zip" --platform win-x86_64 --targets all --log "$env:RUNNER_TEMP\build-logs\standalone-check.log"
 
       # The browser widget, revBrowser (CEF) and the player (DirectShow) in a
       # standalone of the portable zip, with the runner's desktop: a page
@@ -555,19 +379,21 @@ jobs:
       # MP4 file play, pause and end (tools/ci/media_check.py)
       - name: Browser and player check
         id: media_check
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         timeout-minutes: 10
         env:
           VERSION: ${{ steps.product.outputs.version }}
-        run: python tools/ci/media_check.py --package "dist/OXT-Beyond-$env:VERSION-win-x86_64-portable.zip" --platform win-x86_64 --log "$env:RUNNER_TEMP\build-logs\media-check.log"
+        run: python tools/ci/media_check.py --package "dist/OpenXTalk-Lite-$env:VERSION-win-x86_64-portable.zip" --platform win-x86_64 --log "$env:RUNNER_TEMP\build-logs\media-check.log"
 
       # Compile every IDE script of the staged installed layout with its
       # engine; fails on compile errors that are not in the baseline.
       - name: IDE compile check
         id: compile_check
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         timeout-minutes: 20
         env:
           VERSION: ${{ steps.product.outputs.version }}
-        run: ./tools/ci/ide-compile-check.ps1 -Root "dist/stage/OXT-Beyond-$env:VERSION" -LogFile "$env:RUNNER_TEMP\build-logs\ide-compile-check.log"
+        run: ./tools/ci/ide-compile-check.ps1 -Root "dist/stage/OpenXTalk-Lite-$env:VERSION" -LogFile "$env:RUNNER_TEMP\build-logs\ide-compile-check.log"
 
       # The engine test suites of tests/ (tools/ci/run_engine_tests.py): the
       # LiveCode Script tests of tests/lcs, each run on its own by the
@@ -586,87 +412,32 @@ jobs:
       # 4: the tests of four files at a time.
       - name: Engine tests
         id: engine_tests
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 45
         run: python tools/ci/run_engine_tests.py --bin win-x86_64-bin --jobs 4 --log "$env:RUNNER_TEMP\build-logs\engine-tests.log"
 
-      # Evaluate the colour pairs of tools/ci/ide-contrast-pairs.txt
-      # (revIDEColor tags, light and dark appearance) in the staged layout
-      # with its engine; fails on pairs below their WCAG minimum that are
-      # not in tools/ci/ide-contrast-baseline.txt.
-      - name: IDE contrast check
-        id: contrast_check
-        timeout-minutes: 10
-        env:
-          VERSION: ${{ steps.product.outputs.version }}
-        run: ./tools/ci/ide-contrast-check.ps1 -Root "dist/stage/OXT-Beyond-$env:VERSION" -LogFile "$env:RUNNER_TEMP\build-logs\ide-contrast-check.log"
-
-      # Run the staged engine with a user interface (the native theme and the
-      # light and dark colours need one) on tools/ci/render-test.livecodescript
-      # (see render-test.ps1): with the runner's Windows in dark and in light
-      # mode (HKCU ...\Themes\Personalize AppsUseLightTheme, put back
-      # afterwards), with the appAppearance "system", forced "dark" and left
-      # at its default, and once with the engine of the release
-      # RENDER_BASELINE_TAG, the reference for the light appearance. The PNG
-      # files are measured with tools/ci/render_check.py (disabled labels
-      # drawn once and flat, dark and light scrollbars, the owner's light
-      # design kept in every appearance, a stack with no colours dark in the
-      # dark one) and the runs are compared: the light appearance must match
-      # the reference release, a dark Windows with the default appAppearance
-      # must match a light one, and forced dark must match dark. The images
-      # are uploaded as "render-test".
-      - name: Render test (appearances)
-        id: render_test
-        timeout-minutes: 30
-        env:
-          VERSION: ${{ steps.product.outputs.version }}
-          GH_TOKEN: ${{ github.token }}
-          # The last release before the appearance properties: its light
-          # appearance is the reference. Move it only on purpose.
-          RENDER_BASELINE_TAG: v0.1.0
-        run: |
-          $baseline = Join-Path $env:RUNNER_TEMP 'render-baseline'
-          if (Test-Path -LiteralPath $baseline) { Remove-Item -LiteralPath $baseline -Recurse -Force }
-          New-Item -ItemType Directory -Force -Path $baseline | Out-Null
-          gh release download $env:RENDER_BASELINE_TAG --repo ${{ github.repository }} --pattern "*-win-x86_64-portable.zip" --dir $baseline
-          if ($LASTEXITCODE -ne 0) { throw "Could not download the portable zip of $env:RENDER_BASELINE_TAG" }
-          $zip = @(Get-ChildItem -LiteralPath $baseline -Filter '*-win-x86_64-portable.zip')
-          if ($zip.Count -ne 1) { throw "Expected one portable zip of $env:RENDER_BASELINE_TAG, found $($zip.Count)" }
-          $layout = Join-Path $baseline 'layout'
-          Expand-Archive -LiteralPath $zip[0].FullName -DestinationPath $layout
-          ./tools/ci/render-test.ps1 -Root "dist/stage/OXT-Beyond-$env:VERSION" -BaselineRoot $layout -OutDir "$env:RUNNER_TEMP\render-test" -LogFile "$env:RUNNER_TEMP\build-logs\render-test.log"
-
-      - name: Upload render test images
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: render-test
-          path: ${{ runner.temp }}/render-test
-          if-no-files-found: ignore
-          # Diagnostics, kept as long as the logs; PNG files are compressed
-          retention-days: 14
-          compression-level: 0
-
       - name: Build installer
         id: installer
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         timeout-minutes: 60
         env:
           VERSION: ${{ steps.product.outputs.version }}
         run: |
           $log = Join-Path $env:RUNNER_TEMP 'build-logs\build-installer.log'
           $global:LASTEXITCODE = 0
-          ./tools/ci/build-installer.ps1 -Stage "dist/stage/OXT-Beyond-$env:VERSION" -OutDir dist *>&1 | Tee-Object -FilePath $log
+          ./tools/ci/build-installer.ps1 -Stage "dist/stage/OpenXTalk-Lite-$env:VERSION" -OutDir dist *>&1 | Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) { throw "build-installer.ps1 failed with exit code $LASTEXITCODE" }
 
       # Install per user into a temporary folder, check the files, run the
-      # smoke test on the installed OXT-Beyond.exe and uninstall again.
+      # smoke test on the installed OpenXTalk-Lite.exe and uninstall again.
       - name: Test installer
         id: test_installer
+        if: ${{ !cancelled() && steps.installer.outcome == 'success' }}
         timeout-minutes: 30
         env:
           VERSION: ${{ steps.product.outputs.version }}
         run: |
-          $setup = "dist/OXT-Beyond-$env:VERSION-win-x86_64-setup.exe"
+          $setup = "dist/OpenXTalk-Lite-$env:VERSION-win-x86_64-setup.exe"
           if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) { throw "$setup was not written" }
           $log = Join-Path $env:RUNNER_TEMP 'build-logs\test-installer.log'
           $global:LASTEXITCODE = 0
@@ -675,9 +446,10 @@ jobs:
 
       - name: Upload packages
         id: upload
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-win-x86_64
+          name: OpenXTalk-Lite-win-x86_64
           # Everything in dist except the staged layout
           path: |
             dist/*
@@ -723,12 +495,9 @@ jobs:
         if: failure()
         continue-on-error: true
         env:
-          IDE_LINT_OUTCOME: ${{ steps.ide_lint.outcome }}
           VS_OUTCOME: ${{ steps.vs.outcome }}
           PYTHON_OUTCOME: ${{ steps.python.outcome }}
           CYGWIN_OUTCOME: ${{ steps.cygwin.outcome }}
-          PREBUILT_BUILD_OUTCOME: ${{ steps.prebuilt-build.outcome }}
-          PREBUILT_THIRDPARTY_OUTCOME: ${{ steps.prebuilt-thirdparty.outcome }}
           PREBUILT_OUTCOME: ${{ steps.prebuilt.outcome }}
           CONFIGURE_OUTCOME: ${{ steps.configure.outcome }}
           COMPILE_OUTCOME: ${{ steps.compile.outcome }}
@@ -739,18 +508,14 @@ jobs:
           STANDALONE_OUTCOME: ${{ steps.standalone.outcome }}
           MEDIA_CHECK_OUTCOME: ${{ steps.media_check.outcome }}
           COMPILE_CHECK_OUTCOME: ${{ steps.compile_check.outcome }}
-          CONTRAST_CHECK_OUTCOME: ${{ steps.contrast_check.outcome }}
-          RENDER_TEST_OUTCOME: ${{ steps.render_test.outcome }}
+          ENGINE_TESTS_OUTCOME: ${{ steps.engine_tests.outcome }}
           INSTALLER_OUTCOME: ${{ steps.installer.outcome }}
           TEST_INSTALLER_OUTCOME: ${{ steps.test_installer.outcome }}
         run: |
           $outcomes = [ordered]@{
-            'Lint IDE sources' = $env:IDE_LINT_OUTCOME
             'Visual Studio setup' = $env:VS_OUTCOME
             'Python setup' = $env:PYTHON_OUTCOME
             'Cygwin setup' = $env:CYGWIN_OUTCOME
-            'Build OpenSSL, curl, ICU' = $env:PREBUILT_BUILD_OUTCOME
-            'Build Thirdparty' = $env:PREBUILT_THIRDPARTY_OUTCOME
             'Prebuilt libraries' = $env:PREBUILT_OUTCOME
             'Configure' = $env:CONFIGURE_OUTCOME
             'Compile' = $env:COMPILE_OUTCOME
@@ -761,8 +526,7 @@ jobs:
             'Standalone check' = $env:STANDALONE_OUTCOME
             'Browser and player check' = $env:MEDIA_CHECK_OUTCOME
             'IDE compile check' = $env:COMPILE_CHECK_OUTCOME
-            'IDE contrast check' = $env:CONTRAST_CHECK_OUTCOME
-            'Render test' = $env:RENDER_TEST_OUTCOME
+            'Engine tests' = $env:ENGINE_TESTS_OUTCOME
             'Build installer' = $env:INSTALLER_OUTCOME
             'Test installer' = $env:TEST_INSTALLER_OUTCOME
           }
@@ -820,240 +584,17 @@ jobs:
             '',
             "- Commit: ``$env:GITHUB_SHA``",
             "- Visual Studio: ``$env:VS_PATH``, MSVC v141 ``$env:MSVC_V141``, Windows SDK ``$env:WINSDK_VERSION``",
-            "- OXT-Beyond ``$env:VERSION``, build number ``$env:BUILD_NUMBER``; engine ``$env:ENGINE_VERSION``, SQLite ``$env:SQLITE_VERSION``",
+            "- OpenXTalk Lite ``$env:VERSION``, build number ``$env:BUILD_NUMBER``; engine ``$env:ENGINE_VERSION``, SQLite ``$env:SQLITE_VERSION``",
             '',
             '### Artifacts',
             ''
           )
           if ($env:ARTIFACT_URL) {
-            $lines += "- [OXT-Beyond-win-x86_64]($env:ARTIFACT_URL): the installer, the portable, binaries and symbols zips (in release builds also the xTalk sources zip) and SHA256SUMS"
+            $lines += "- [OpenXTalk-Lite-win-x86_64]($env:ARTIFACT_URL): the installer, the portable, binaries and symbols zips and SHA256SUMS"
           }
           else {
-            $lines += '- OXT-Beyond-win-x86_64: not uploaded (an earlier step failed)'
+            $lines += '- OpenXTalk-Lite-win-x86_64: not uploaded (an earlier step failed)'
           }
-          $lines += '- build-logs-win-x86_64: msbuild.log and the packaging, smoke test, standalone check, IDE compile check, IDE contrast check, render test and installer logs'
-          $lines += '- render-test: the images of the render test (each run: the light and dark appearance on a dark and a light Windows, and the reference release) and what the engine printed'
+          $lines += '- build-logs-win-x86_64: msbuild.log and the packaging, smoke test, standalone check, browser and player check, IDE compile check, engine test and installer logs'
           $lines += ''
           Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ($lines -join "`n") -Encoding utf8
-
-  # The 32-bit Windows build, for the standalone runtime
-  # Runtime/Windows/x86-32 (the IDE's "Windows" target), which the runtimes
-  # asset carries for every package (tools/oxt/make_runtimes_asset.py
-  # --builds). The toolchain and the prebuilt libraries of the job above,
-  # for x86: prebuilt/build-libraries-windows.ps1 -Arch x86 (CEF from
-  # Spotify's 32-bit build of the same version), config.py --platform
-  # win-x86 and make.cmd with the Win32 platform. It is checked like the
-  # x86-64 build (verify-build.ps1, the headless smoke test of the build
-  # output, the engine tests), on the same 64-bit Windows, which runs 32-bit
-  # programs. Outputs: win-x86-bin without its .pdb files as the artifact
-  # OXT-Beyond-win-x86-bin, the .pdb files as OXT-Beyond-win-x86-symbols;
-  # nothing is packaged.
-  build-x86:
-    name: Build win-x86
-    runs-on: windows-2022
-    timeout-minutes: 300
-    defaults:
-      run:
-        shell: pwsh
-    env:
-      BUILDTYPE: Release
-      BUILD_PLATFORM: win-x86
-      WINSDK_VERSION: 10.0.17763.0
-      WINSDK_COMPONENT: Microsoft.VisualStudio.Component.Windows10SDK.17763
-      CYGPATH: C:\cygwin64
-      PREBUILT_WIN32_SUBPLATFORMS: v141_static_release
-      PREBUILT_STRICT: '1'
-
-    steps:
-      - name: Check out
-        uses: actions/checkout@v7
-        with:
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Install MSVC v141 toolset into Visual Studio 2022
-        id: vs
-        timeout-minutes: 45
-        run: ./tools/ci/install-vs-components.ps1 -WindowsSdkVersion $env:WINSDK_VERSION -WindowsSdkComponent $env:WINSDK_COMPONENT -LogDir "$env:RUNNER_TEMP\build-logs\vs-installer"
-
-      - name: Install Python 2.7
-        timeout-minutes: 15
-        run: |
-          $python = 'C:\Python27\python.exe'
-          for ($attempt = 1; $attempt -le 2 -and -not (Test-Path -LiteralPath $python); $attempt++) {
-            choco install python2 -y --no-progress
-            Write-Host "choco exited with code $LASTEXITCODE (attempt $attempt)"
-            if ($LASTEXITCODE -ne 0 -and $attempt -lt 2) { Start-Sleep -Seconds 10 }
-          }
-          if (-not (Test-Path -LiteralPath $python)) { throw "$python was not installed" }
-
-      - name: Install Cygwin
-        timeout-minutes: 20
-        uses: cygwin/cygwin-install-action@v6
-        with:
-          platform: x86_64
-          install-dir: C:\cygwin64
-          add-to-path: 'false'
-          packages: flex bison m4 gawk sed grep curl tar bzip2 make
-
-      # As in the job above, for x86
-      - name: Compute the prebuilt libraries cache key
-        id: prebuilt-key
-        env:
-          SCRIPTS_HASH: ${{ hashFiles('prebuilt/versions/*', 'prebuilt/build-libraries-windows.ps1', 'prebuilt/cef-sha1sums', 'prebuilt/thirdparty.gyp', 'config/*.gypi', 'tools/ci/build-windows.ps1', 'make.cmd') }}
-        run: |
-          $thirdparty = (git rev-parse HEAD:thirdparty).Substring(0, 12)
-          if ($LASTEXITCODE -ne 0) { throw 'git rev-parse HEAD:thirdparty failed' }
-          $key = "prebuilt-win32-x86-v141_static_release-$($env:SCRIPTS_HASH.Substring(0, 16))-$thirdparty"
-          Write-Host "Cache key: $key"
-          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "key=$key" -Encoding utf8
-
-      - name: Restore prebuilt libraries
-        id: prebuilt-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: prebuilt/packaged
-          key: ${{ steps.prebuilt-key.outputs.key }}
-
-      - name: Install NASM
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 10
-        run: |
-          choco install nasm -y --no-progress
-          if ($LASTEXITCODE -ne 0) { throw "choco install nasm exited with code $LASTEXITCODE" }
-
-      - name: Build OpenSSL, curl and ICU from source, repackage CEF
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 90
-        env:
-          VSINSTALLDIR: ${{ steps.vs.outputs.install-path }}
-        run: |
-          ./prebuilt/build-libraries-windows.ps1 -Libraries OpenSSL, Curl, ICU, CEF -Arch x86 -Mode release
-          Get-ChildItem -LiteralPath prebuilt/packaged | Format-Table Name, Length -AutoSize | Out-String | Write-Host
-
-      - name: Build the Thirdparty libraries from thirdparty/
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 90
-        env:
-          VSINSTALLDIR: ${{ steps.vs.outputs.install-path }}
-        run: |
-          ./prebuilt/build-libraries-windows.ps1 -Libraries Thirdparty -Arch x86 -Mode release
-          Get-ChildItem -LiteralPath prebuilt/packaged | Format-Table Name, Length -AutoSize | Out-String | Write-Host
-
-      - name: Save prebuilt libraries to the cache
-        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
-        continue-on-error: true
-        uses: actions/cache/save@v6
-        with:
-          path: prebuilt/packaged
-          key: ${{ steps.prebuilt-key.outputs.key }}
-
-      - name: Fetch prebuilt libraries
-        timeout-minutes: 30
-        shell: C:\cygwin64\bin\bash.exe --login -o igncr '{0}'
-        run: |
-          set -eo pipefail
-          cd "$(cygpath -u "$GITHUB_WORKSPACE")/prebuilt"
-          export PREBUILT_LOCAL_DIR="$PWD/packaged"
-          echo "PREBUILT_LOCAL_DIR=$(cygpath -w "$PREBUILT_LOCAL_DIR")" >> "$GITHUB_ENV"
-          ./fetch-libraries.sh win32 x86
-          ls -l fetched
-          ls unpacked
-
-      - name: Configure (config.py and gyp)
-        timeout-minutes: 20
-        run: ./tools/ci/build-windows.ps1 -Stage configure
-
-      - name: Build (make.cmd)
-        timeout-minutes: 240
-        env:
-          VSINSTALLDIR: ${{ steps.vs.outputs.install-path }}
-        run: ./tools/ci/build-windows.ps1 -Stage build
-
-      - name: Verify build output
-        run: ./tools/ci/verify-build.ps1 -BinDir win-x86-bin
-
-      # Uploaded before the tests, so that a failing test leaves the build
-      # output to look at (as the Linux x86 job does)
-      # 7-Zip is on the runner image; both archives hold the folder
-      # win-x86-bin, so the symbols can be extracted over the binaries
-      - name: Package the bin folder and the debug symbols
-        run: |
-          $7z = Join-Path $env:ProgramFiles '7-Zip\7z.exe'
-          & $7z a -tzip -mx=7 OXT-Beyond-win-x86-bin.zip win-x86-bin '-xr!*.pdb'
-          if ($LASTEXITCODE -ne 0) { throw "7z exited with code $LASTEXITCODE" }
-          & $7z a -tzip -mx=7 OXT-Beyond-win-x86-symbols.zip '-ir!win-x86-bin\*.pdb'
-          if ($LASTEXITCODE -ne 0) { throw "7z exited with code $LASTEXITCODE" }
-          Get-Item OXT-Beyond-win-x86-*.zip | Format-Table Name, Length -AutoSize | Out-String | Write-Host
-
-      - name: Upload the bin folder
-        uses: actions/upload-artifact@v7
-        with:
-          name: OXT-Beyond-win-x86-bin
-          path: OXT-Beyond-win-x86-bin.zip
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-
-      - name: Upload the debug symbols
-        uses: actions/upload-artifact@v7
-        with:
-          name: OXT-Beyond-win-x86-symbols
-          path: OXT-Beyond-win-x86-symbols.zip
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-
-      # The build output's development engine, headless: the script engine,
-      # ICU, OpenSSL, SQLite, revXML and revZip, as 32-bit code
-      - name: Smoke test (build output, headless)
-        timeout-minutes: 15
-        env:
-          OXT_EXPECT_PROCESSOR: x86
-        run: ./tools/ci/smoke-test.ps1 -BinDir win-x86-bin -LogFile "$env:RUNNER_TEMP\build-logs\smoke-test.log"
-
-      - name: Engine tests
-        timeout-minutes: 45
-        run: python tools/ci/run_engine_tests.py --bin win-x86-bin --arch x86 --jobs 4 --log "$env:RUNNER_TEMP\build-logs\engine-tests.log"
-
-      # A standalone built from this build's runtime (standalone-community.exe)
-      # by its development engine, as the IDE's builder does at its core,
-      # then run as the 32-bit program it is (tools/ci/standalone_check.py)
-      - name: Standalone check (build output)
-        timeout-minutes: 15
-        run: python tools/ci/standalone_check.py --engine win-x86-bin/LiveCode-Community.exe --runtime win-x86-bin/standalone-community.exe --platform win-x86 --log "$env:RUNNER_TEMP\build-logs\standalone-check.log"
-
-      - name: Collect logs
-        if: always()
-        continue-on-error: true
-        run: |
-          $dest = Join-Path $env:RUNNER_TEMP 'build-logs'
-          New-Item -ItemType Directory -Force -Path $dest | Out-Null
-          foreach ($log in @('build-win-x86\msbuild.log', 'C:\ProgramData\chocolatey\logs\chocolatey.log')) {
-            if (Test-Path -LiteralPath $log) { Copy-Item -LiteralPath $log -Destination $dest -Force }
-          }
-          $prebuiltWork = 'prebuilt\build\windows'
-          if (Test-Path -LiteralPath $prebuiltWork) {
-            foreach ($f in @(Get-ChildItem -LiteralPath $prebuiltWork -Recurse -File -Include 'config.log', 'CMakeError.log', 'CMakeConfigureLog.yaml' -ErrorAction SilentlyContinue)) {
-              $name = ($f.FullName.Substring((Resolve-Path $prebuiltWork).ProviderPath.Length + 1) -replace '[\\/]', '_')
-              Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $dest "prebuilt-$name") -Force
-            }
-          }
-          $msbuildLog = 'build-win-x86\msbuild.log'
-          if (Test-Path -LiteralPath $msbuildLog) {
-            $errors = @(Select-String -LiteralPath $msbuildLog -Pattern '(^|[ :(])error (C|LNK|MSB)[0-9]+|fatal error' |
-              Select-Object -First 50 | ForEach-Object { $_.Line.Trim() })
-            if ($errors.Count -gt 0) {
-              Write-Host 'msbuild.log errors:'
-              $errors | ForEach-Object { Write-Host $_ }
-            }
-          }
-
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-logs-win-x86
-          path: ${{ runner.temp }}/build-logs
-          if-no-files-found: ignore
-          retention-days: 14

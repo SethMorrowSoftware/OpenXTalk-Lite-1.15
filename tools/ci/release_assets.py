@@ -40,9 +40,7 @@ assemble checks each artifact folder of --artifacts:
     name (a new kind of file is added to the table on purpose, together
     with its description in tools/ci/release_notes.py);
 
-and across the artifacts that no file name comes from two of them: the
-xTalk sources zip, which every platform's packages share, is written
-once, by the Windows job. Nothing else in DIR is looked at (the build
+and across the artifacts that no file name comes from two of them. Nothing else in DIR is looked at (the build
 and test logs, the per-architecture build outputs), and nothing is
 written when a check fails. Then it links (or, across file systems,
 copies) every file except the artifacts' own SHA256SUMS into --out and
@@ -91,10 +89,6 @@ ASSETS = (
         '-win-x86_64-portable.zip',
         '-win-x86_64-binaries.zip',
         '-win-x86_64-symbols.zip',
-        # Every platform's packages take the same pinned xTalk files, so
-        # one copy serves the release; the Windows job writes it
-        # (package-windows.ps1 -XtalkSourcesZip) and no other job does
-        '-xtalk-sources.zip',
     )),
     ('OpenXTalk-Lite-mac-universal', 'mac-universal', (
         '-mac-universal.dmg',

@@ -1,83 +1,61 @@
-# Builds the OXT-Beyond engine for Linux x86_64 and arm64 on GitHub-hosted
-# runners. Both architectures use the same container image and the same steps,
-# so they are built identically.
+# Builds OpenXTalk Lite 1.15 (Tom Perry's source at the tag tom-perry-1.15,
+# with the build changes after it) for Linux x86_64, arm64 and x86 on
+# GitHub-hosted runners, checks it and packages the x86_64 build. Adapted
+# from OXT-Beyond's workflow of the same name; see README.md.
 #
-# The container is Ubuntu 20.04, so the binaries need glibc 2.31 or newer
-# (Ubuntu 20.04+, Debian 11+, Fedora 32+, Raspberry Pi OS Bullseye+ 64-bit)
-# and no newer libstdc++ or libgcc_s than its GCC 10 ones; the Verify step
-# fails when an ELF file of the output needs more
-# (tools/ci/check_elf_floor.py). It is
-# also the newest Ubuntu that still ships Python 2.7, which gyp and
-# config.py need.
+# The x86_64 and arm64 builds run in an Ubuntu 20.04 container, the x86 one
+# in a Debian 11 i386 container (tools/ci/i386-container.sh): glibc 2.31
+# and GCC 10's libstdc++ are the oldest the binaries need (the Verify step
+# checks every ELF file with tools/ci/check_elf_floor.py), and Ubuntu 20.04
+# still has the Python 2.7 that gyp and config.py need. Tom Perry built his
+# 9.x engine for Windows only; these builds use OXT-Beyond's Linux port of
+# the build files (the commits after tom-perry-1.15).
 #
 # Prebuilt libraries: LiveCode's download server no longer serves them, so
-# this workflow builds them from pinned upstream sources (prebuilt/versions/*)
-# with the scripts in prebuilt/, and keeps the resulting tarballs in the
+# they are built here from the versions pinned in prebuilt/versions (the
+# ones Tom Perry's tree pins, except OpenSSL 1.1.1w for 1.1.1g; see the
+# commit that changed it) with the scripts in prebuilt/, and kept in the
 # GitHub Actions cache:
 #   OpenSSL, Curl, ICU  prebuilt/scripts/build-{openssl,curl,icu}.sh
 #   CEF (x86_64 only)   Spotify's CEF build, repackaged by build-cef.sh
 #   Thirdparty          the vendored thirdparty/ sources, built by gyp
-# A cache miss (a change to those scripts, to the versions, to thirdparty/ or
-# to the build settings, or an evicted cache) rebuilds them in the same job.
 #
-# Output: the artifact OXT-Beyond-linux-<arch>-bin holds linux-<arch>-bin
-# (engines, externals, toolchain, packaged extensions) as a tar.xz, without
-# the debug symbols; OXT-Beyond-linux-<arch>-symbols holds those, the *.dbg
-# files of the same folder, as a tar.xz to extract over it. Neither holds
-# the tools the build makes to build itself (tools/ci/list_build_tools.py:
-# GENTLE, which may not be redistributed, among them). Both are kept for
-# 30 days, like the packages; logs for 14.
+# Each build uploads its build output (OpenXTalk-Lite-linux-<arch>-bin, a
+# tar.xz without the debug symbols and without the tools the build makes to
+# build itself, GENTLE among them) and its debug symbols
+# (OpenXTalk-Lite-linux-<arch>-symbols), then runs the IDE compile check on
+# the checkout's IDE and the engine test suites of tests/. A failure that
+# is not in the baselines (tools/ci/*-baseline*.txt, which record how Tom
+# Perry's code behaves) fails the job.
 #
-# Checks: the build output's files, the glibc floor of every ELF file, the
-# server engine running a script, and the IDE compile check of the
-# checkout's IDE with the new development engine
-# (tools/ci/run_livecode_check.py compile --repo-layout).
+# The job "Package linux-x86_64" makes the Linux package from the x86_64
+# build's artifacts, on a plain ubuntu-24.04 runner, tests it as users get
+# it (smoke test, IDE compile check through the launcher, standalones,
+# browser and player, system libraries, desktop entry, install scripts) and
+# uploads, as the artifact OpenXTalk-Lite-linux-x86_64:
 #
-# The job "Package linux-x86_64" then makes the Linux package from the
-# x86_64 build's two artifacts, on a plain ubuntu-24.04 runner (whose glibc
-# and OpenSSL 3 load every bundled xTalk extension, which the build's
-# Ubuntu 20.04 container cannot), and uploads, as the artifact
-# OXT-Beyond-linux-x86_64:
-#
-#   OXT-Beyond-<ver>-linux-x86_64.tar.xz           the program folder
-#                                                  OXT-Beyond-<ver>, with
-#                                                  the launcher oxt-beyond
-#                                                  and install.sh
-#   OXT-Beyond-<ver>-linux-x86_64-binaries.tar.xz  linux-x86_64-bin without
-#                                                  the *.dbg files, plus the
-#                                                  licence files
-#   OXT-Beyond-<ver>-linux-x86_64-symbols.tar.xz   the *.dbg files
+#   OpenXTalk-Lite-<ver>-linux-x86_64.tar.xz           the program folder,
+#                                                       with the launcher
+#                                                       openxtalk-lite and
+#                                                       install.sh
+#   OpenXTalk-Lite-<ver>-linux-x86_64-binaries.tar.xz  the build output
+#   OpenXTalk-Lite-<ver>-linux-x86_64-symbols.tar.xz   the *.dbg files
 #   SHA256SUMS
 #
-# (tools/oxt/package.py --platform linux-x86_64, tools/oxt/package_dist.py),
-# after testing the tarball as users get it, extracted to a neutral folder:
-# the headless smoke test (which loads and calls every bundled extension),
-# the IDE compile check run through the launcher, ldd and the launcher's
-# library list against every ELF file (tools/ci/check_linux_libraries.py),
-# desktop-file-validate, and the launcher, install.sh and uninstall.sh in
-# scratch home folders (tools/ci/test_linux_package.py). The runtime
-# libraries it installs for that are the Debian packages of
-# Installer/linux/libraries.txt, the list the launcher checks. The external
-# assets and xTalk extension files are cached as in build-windows.yml; a
-# manual run can leave them out (inputs below, or the repository variables
-# OXT_NO_EXTERNAL_ASSETS / OXT_NO_XTALK_EXTENSIONS set to 1), a release build
-# never does. Linux arm64 is not packaged yet.
+# The standalone runtimes for other platforms come from the external asset
+# oxt-runtimes-1.15 (OpenXTalk Lite 1.15's own). Every check after the
+# build or the packaging runs even when an earlier check failed, so that a
+# run reports all of them.
 #
-# Version: <ver> is the product version in ide/.version. A build of a tag
-# that starts with "v" fails straight away unless the tag is v<ver>, as in
-# build-windows.yml. OXT_BUILD_NUMBER is the input build-number when
-# release.yml gives one (the same for every job and platform of a
-# release); otherwise it is the UTC time at which the version step ran, as
-# YYYYMMDDHHMM, and the package job takes its own, when it starts
-# packaging.
+# Version: <ver> is ide/.version, which is Tom Perry's (1.15). Releases are
+# tagged v<ver>-r<n>, the nth release built from this repository; a tag
+# build of any other "v" tag fails straight away. OXT_BUILD_NUMBER is the
+# input build-number when release.yml gives one, else the UTC time as
+# YYYYMMDDHHMM.
 #
 # Releases: .github/workflows/release.yml calls this workflow (workflow_call)
-# for a tag that starts with "v" and for its dry runs, and publishes the
-# artifact OXT-Beyond-linux-x86_64 with the other platforms' packages; this
-# workflow no longer runs on tags of its own. The input release makes a
-# called run build as for a release (external assets and xTalk Suite
-# extensions never left out) also for a dry run on a branch. The release
-# waits for every job here, the arm64 build included.
+# and publishes the artifact OpenXTalk-Lite-linux-x86_64 with the other
+# platforms' packages.
 
 name: Build (Linux)
 
@@ -96,12 +74,6 @@ on:
           published yet
         type: boolean
         default: false
-      no_xtalk_extensions:
-        description: >-
-          Package without the xTalk Suite extensions of
-          tools/oxt/xtalk-extensions.json
-        type: boolean
-        default: false
   workflow_call:
     inputs:
       build-number:
@@ -114,8 +86,7 @@ on:
         default: ''
       release:
         description: >-
-          Build as for a release: never leave out the external assets or the
-          xTalk Suite extensions
+          Build as for a release: never leave out the external assets
         type: boolean
         required: false
         default: false
@@ -211,10 +182,14 @@ jobs:
             echo "::error::ide/.version contains '$version'; expected a version such as 0.0.1 or 0.1.0-beta.1"
             exit 1
           fi
-          # [vV]: the Windows step's -like 'v*' ignores case
-          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == [vV]* ]] && [ "$REF_NAME" != "v$version" ]; then
-            echo "::error::Tag $REF_NAME does not match ide/.version ($version); the tag for this version is v$version"
-            exit 1
+          # A release tag is v<version>-r<n>, the nth release built from this
+          # repository ([vV]: the Windows step's -like 'v*' ignores case)
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == [vV]* ]]; then
+            rebuild=${REF_NAME#"v$version-r"}
+            if [ "$rebuild" = "$REF_NAME" ] || ! [[ $rebuild =~ ^[1-9][0-9]*$ ]]; then
+              echo "::error::Tag $REF_NAME does not match ide/.version ($version); the tags for this version are v$version-r1, v$version-r2 and so on"
+              exit 1
+            fi
           fi
           if [ -n "$BUILD_NUMBER_INPUT" ]; then
             # Digits only, as tools/oxt/package.py requires
@@ -227,7 +202,7 @@ jobs:
           else
             build_number=$(date -u +%Y%m%d%H%M)
           fi
-          echo "OXT-Beyond $version, build number $build_number"
+          echo "OpenXTalk-Lite $version, build number $build_number"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "build-number=$build_number" >> "$GITHUB_OUTPUT"
           echo "OXT_BUILD_NUMBER=$build_number" >> "$GITHUB_ENV"
@@ -334,6 +309,7 @@ jobs:
           fi
 
       - name: Verify build output
+        id: verify
         run: |
           B="linux-$ARCH-bin"
           ls -la "$B"
@@ -409,10 +385,10 @@ jobs:
           fi
           echo "$(wc -l < "$RUNNER_TEMP/dbg.list") debug symbol files"
           # (--exclude and -X before the folder: GNU tar applies them to the names after it)
-          tar -cJf "OXT-Beyond-linux-$ARCH-bin.tar.xz" --exclude='*.dbg' -X "$RUNNER_TEMP/build-tools.list" "$B"
-          tar -cJf "OXT-Beyond-linux-$ARCH-symbols.tar.xz" -T "$RUNNER_TEMP/dbg.list"
-          ls -l OXT-Beyond-linux-"$ARCH"-*.tar.xz
-          for t in OXT-Beyond-linux-"$ARCH"-bin.tar.xz OXT-Beyond-linux-"$ARCH"-symbols.tar.xz; do
+          tar -cJf "OpenXTalk-Lite-linux-$ARCH-bin.tar.xz" --exclude='*.dbg' -X "$RUNNER_TEMP/build-tools.list" "$B"
+          tar -cJf "OpenXTalk-Lite-linux-$ARCH-symbols.tar.xz" -T "$RUNNER_TEMP/dbg.list"
+          ls -l OpenXTalk-Lite-linux-"$ARCH"-*.tar.xz
+          for t in OpenXTalk-Lite-linux-"$ARCH"-bin.tar.xz OpenXTalk-Lite-linux-"$ARCH"-symbols.tar.xz; do
             tar -tJf "$t" > "$RUNNER_TEMP/members.txt"
             if grep -E '(^|/)(gentle|reflex)-' "$RUNNER_TEMP/members.txt"; then
               echo "::error::$t holds the GENTLE files above, which may not be redistributed"; exit 1
@@ -422,8 +398,8 @@ jobs:
       - name: Upload the bin folder
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-linux-${{ matrix.arch }}-bin
-          path: OXT-Beyond-linux-${{ matrix.arch }}-bin.tar.xz
+          name: OpenXTalk-Lite-linux-${{ matrix.arch }}-bin
+          path: OpenXTalk-Lite-linux-${{ matrix.arch }}-bin.tar.xz
           if-no-files-found: error
           retention-days: 30
           # The tarball is compressed already
@@ -432,8 +408,8 @@ jobs:
       - name: Upload the debug symbols
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-linux-${{ matrix.arch }}-symbols
-          path: OXT-Beyond-linux-${{ matrix.arch }}-symbols.tar.xz
+          name: OpenXTalk-Lite-linux-${{ matrix.arch }}-symbols
+          path: OpenXTalk-Lite-linux-${{ matrix.arch }}-symbols.tar.xz
           if-no-files-found: error
           retention-days: 30
           # The tarball is compressed already
@@ -449,6 +425,7 @@ jobs:
       # display. python is Python 2 (gyp, config.py); python3 (3.8 on
       # focal) comes from the first apt step, for the checks.
       - name: IDE compile check (repository)
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           python3 --version
@@ -468,6 +445,7 @@ jobs:
       # "true" here, so the tests that act on the desktop run too. --jobs 4:
       # the tests of four files at a time (the runners have four processors).
       - name: Engine tests
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 45
         run: python3 tools/ci/run_engine_tests.py --bin "linux-$ARCH-bin" --jobs 4 --log engine-tests.log
 
@@ -492,10 +470,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # The 32-bit Linux build, for the standalone runtime Runtime/Linux/x86-32
-  # (the IDE's "Linux" target), which the runtimes asset carries for every
-  # package (tools/oxt/make_runtimes_asset.py --builds). It is built from
-  # this repository like the legs above and checked the same ways (files,
+  # The 32-bit Linux build: the code of the standalone runtime
+  # Runtime/Linux/x86-32 (the IDE's "Linux" target). The packages take that
+  # runtime from oxt-runtimes-1.15; this build shows that the code builds
+  # and passes its tests as 32-bit code. It is built from this repository
+  # like the legs above and checked the same ways (files,
   # ELF floor, server engine, IDE compile check, engine tests), but in a
   # Debian 11 i386 container that the job starts itself
   # (tools/ci/i386-container.sh): Ubuntu has no i386 images after 18.04,
@@ -503,7 +482,7 @@ jobs:
   # the glibc 2.31 and the GCC 10 libstdc++ of the other legs' Ubuntu 20.04.
   # There is no CEF, as on arm64 (CEF's 32-bit Linux builds ended with CEF
   # 101; OpenXTalk Lite 1.15's x86-32 runtime had none either). Outputs: the
-  # artifacts OXT-Beyond-linux-x86-bin and -symbols, as for the other legs;
+  # artifacts OpenXTalk-Lite-linux-x86-bin and -symbols, as for the other legs;
   # nothing is packaged.
   build-x86:
     name: Build linux-x86
@@ -582,6 +561,7 @@ jobs:
       # As for the other legs, without revbrowser (no CEF). --machine x86:
       # every ELF file is i386.
       - name: Verify build output
+        id: verify
         run: |
           tools/ci/i386-container.sh run '
             B=linux-x86-bin
@@ -622,10 +602,10 @@ jobs:
             if [ ! -s "$RUNNER_TEMP/dbg.list" ]; then
               echo "::error::no .dbg files in $B; the debug-symbols target of the build makes them"; exit 1
             fi
-            tar -cJf OXT-Beyond-linux-x86-bin.tar.xz --exclude="*.dbg" -X "$RUNNER_TEMP/build-tools.list" "$B"
-            tar -cJf OXT-Beyond-linux-x86-symbols.tar.xz -T "$RUNNER_TEMP/dbg.list"
-            ls -l OXT-Beyond-linux-x86-*.tar.xz
-            for t in OXT-Beyond-linux-x86-bin.tar.xz OXT-Beyond-linux-x86-symbols.tar.xz; do
+            tar -cJf OpenXTalk-Lite-linux-x86-bin.tar.xz --exclude="*.dbg" -X "$RUNNER_TEMP/build-tools.list" "$B"
+            tar -cJf OpenXTalk-Lite-linux-x86-symbols.tar.xz -T "$RUNNER_TEMP/dbg.list"
+            ls -l OpenXTalk-Lite-linux-x86-*.tar.xz
+            for t in OpenXTalk-Lite-linux-x86-bin.tar.xz OpenXTalk-Lite-linux-x86-symbols.tar.xz; do
               tar -tJf "$t" > "$RUNNER_TEMP/members.txt"
               if grep -E "(^|/)(gentle|reflex)-" "$RUNNER_TEMP/members.txt"; then
                 echo "::error::$t holds the GENTLE files above, which may not be redistributed"; exit 1
@@ -635,8 +615,8 @@ jobs:
       - name: Upload the bin folder
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-linux-x86-bin
-          path: OXT-Beyond-linux-x86-bin.tar.xz
+          name: OpenXTalk-Lite-linux-x86-bin
+          path: OpenXTalk-Lite-linux-x86-bin.tar.xz
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
@@ -644,13 +624,14 @@ jobs:
       - name: Upload the debug symbols
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-linux-x86-symbols
-          path: OXT-Beyond-linux-x86-symbols.tar.xz
+          name: OpenXTalk-Lite-linux-x86-symbols
+          path: OpenXTalk-Lite-linux-x86-symbols.tar.xz
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
 
       - name: IDE compile check (repository)
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           tools/ci/i386-container.sh run 'python3 tools/ci/run_livecode_check.py compile --repo-layout --bin linux-x86-bin \
@@ -659,6 +640,7 @@ jobs:
       # The engine test suites, as for the other legs (with this leg's
       # baseline supplement engine-tests-baseline-linux-x86.txt, if any)
       - name: Engine tests
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 45
         run: |
           tools/ci/i386-container.sh run 'python3 tools/ci/run_engine_tests.py --bin linux-x86-bin --arch x86 --jobs 4 \
@@ -669,6 +651,7 @@ jobs:
       # ("_internal deploy linux"), then run in the container
       # (tools/ci/standalone_check.py)
       - name: Standalone check (build output)
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 15
         run: |
           tools/ci/i386-container.sh run 'python3 tools/ci/standalone_check.py --engine linux-x86-bin/LiveCode-Community \
@@ -718,13 +701,13 @@ jobs:
       - name: Download the build
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-linux-x86_64-bin
+          name: OpenXTalk-Lite-linux-x86_64-bin
           path: ${{ runner.temp }}/ci-build
 
       - name: Download the debug symbols
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-linux-x86_64-symbols
+          name: OpenXTalk-Lite-linux-x86_64-symbols
           path: ${{ runner.temp }}/ci-symbols
 
       # The runtime libraries the package needs, from the list the launcher
@@ -754,9 +737,9 @@ jobs:
           python3 --version
           ldd --version | sed -n 1p
 
-      # The same caches as build-windows.yml (see there): the external
-      # assets' archives and the xTalk extensions' files. The cache version
-      # includes the runner's OS, so these entries are Linux's own.
+      # The same cache as build-windows.yml (see there): the external
+      # assets' archives. The cache version includes the runner's OS, so
+      # these entries are Linux's own.
       - name: Restore cached external assets
         id: assets-cache
         uses: actions/cache/restore@v6
@@ -764,14 +747,7 @@ jobs:
           path: prebuilt/fetched-assets/*.zip
           key: oxt-external-assets-${{ hashFiles('tools/oxt/external-assets.json') }}
 
-      - name: Restore cached xTalk extension files
-        id: xtalk-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: prebuilt/fetched-assets/xtalk
-          key: oxt-xtalk-extensions-${{ hashFiles('tools/oxt/xtalk-extensions.json') }}
-
-      # Stages the program folder in $RUNNER_TEMP/stage/OXT-Beyond-<ver>
+      # Stages the program folder in $RUNNER_TEMP/stage/OpenXTalk-Lite-<ver>
       # (package.py --bin-tar extracts the build tarball itself, keeping
       # modes and links) and writes the three archives and SHA256SUMS to
       # dist/ (package_dist.py; the symbols come from the symbols artifact).
@@ -784,10 +760,9 @@ jobs:
         env:
           OXT_ASSETS_CACHE: ${{ github.workspace }}/prebuilt/fetched-assets
           NO_EXTERNAL_ASSETS: ${{ github.ref_type != 'tag' && !inputs.release && (inputs.no_external_assets == true || vars.OXT_NO_EXTERNAL_ASSETS == '1') }}
-          NO_XTALK_EXTENSIONS: ${{ github.ref_type != 'tag' && !inputs.release && (inputs.no_xtalk_extensions == true || vars.OXT_NO_XTALK_EXTENSIONS == '1') }}
           BUILD_NUMBER_INPUT: ${{ inputs.build-number }}
-          BIN_TAR: ${{ runner.temp }}/ci-build/OXT-Beyond-linux-x86_64-bin.tar.xz
-          SYMBOLS_TAR: ${{ runner.temp }}/ci-symbols/OXT-Beyond-linux-x86_64-symbols.tar.xz
+          BIN_TAR: ${{ runner.temp }}/ci-build/OpenXTalk-Lite-linux-x86_64-bin.tar.xz
+          SYMBOLS_TAR: ${{ runner.temp }}/ci-symbols/OpenXTalk-Lite-linux-x86_64-symbols.tar.xz
         run: |
           mkdir -p "$RUNNER_TEMP/logs"
           for f in "$BIN_TAR" "$SYMBOLS_TAR"; do
@@ -795,14 +770,11 @@ jobs:
           done
           OXT_BUILD_NUMBER=${BUILD_NUMBER_INPUT:-$(date -u +%Y%m%d%H%M)}
           export OXT_BUILD_NUMBER
-          args=()
+          # OpenXTalk Lite 1.15 has none of OXT-Beyond's xTalk Suite extensions
+          args=(--no-xtalk-extensions)
           if [ "$NO_EXTERNAL_ASSETS" = true ]; then
             echo "::warning title=Package::External assets left out (no_external_assets input or OXT_NO_EXTERNAL_ASSETS variable): the package has no standalone runtimes for other platforms."
             args+=(--no-external-assets)
-          fi
-          if [ "$NO_XTALK_EXTENSIONS" = true ]; then
-            echo "::warning title=Package::xTalk Suite extensions left out (no_xtalk_extensions input or OXT_NO_XTALK_EXTENSIONS variable)."
-            args+=(--no-xtalk-extensions)
           fi
           python3 tools/oxt/package.py --platform linux-x86_64 --bin-tar "$BIN_TAR" \
             --out "$RUNNER_TEMP/stage" --summary-json "$RUNNER_TEMP/stage-summary.json" "${args[@]}" \
@@ -819,19 +791,12 @@ jobs:
           path: prebuilt/fetched-assets/*.zip
           key: ${{ steps.assets-cache.outputs.cache-primary-key }}
 
-      - name: Save xTalk extension files to the cache
-        if: always() && steps.xtalk-cache.outputs.cache-hit != 'true' && hashFiles('prebuilt/fetched-assets/xtalk/**') != ''
-        continue-on-error: true
-        uses: actions/cache/save@v6
-        with:
-          path: prebuilt/fetched-assets/xtalk
-          key: ${{ steps.xtalk-cache.outputs.cache-primary-key }}
-
       # As a user does: tar -xJf into an ordinary folder. A folder named
       # _build or *-bin on the way would make the engine run the IDE of a
       # source checkout (repository mode), so the tests run here, never
       # from the stage or the build.
       - name: Extract the package to a neutral folder
+        id: extract
         env:
           PACKAGE: ${{ steps.package.outputs.package }}
           PACKAGE_ROOT: ${{ steps.package.outputs.package-root }}
@@ -853,7 +818,7 @@ jobs:
           mkdir -p "$test_dir"
           tar -xJf "$PACKAGE" -C "$test_dir"
           root="$test_dir/$PACKAGE_ROOT"
-          for f in OXT-Beyond oxt-beyond install.sh uninstall.sh; do
+          for f in OpenXTalk-Lite openxtalk-lite install.sh uninstall.sh; do
             if [ ! -x "$root/$f" ]; then echo "::error::$PACKAGE: $f is missing or not executable"; exit 1; fi
           done
           ls -la "$root"
@@ -864,6 +829,7 @@ jobs:
       # (run_livecode_check.py extracts the tarball again, to its own
       # neutral folder)
       - name: Smoke test (package, headless)
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         timeout-minutes: 15
         env:
           PACKAGE: ${{ steps.package.outputs.package }}
@@ -875,9 +841,10 @@ jobs:
       # started through the launcher (with -ui the launcher needs only the
       # "core" libraries and execs the engine with the arguments unchanged)
       - name: IDE compile check (package, through the launcher)
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         timeout-minutes: 20
         run: |
-          python3 tools/ci/run_livecode_check.py compile --install "$OXT_ROOT" --engine "$OXT_ROOT/oxt-beyond" \
+          python3 tools/ci/run_livecode_check.py compile --install "$OXT_ROOT" --engine "$OXT_ROOT/openxtalk-lite" \
             --platform linux-x86_64 --log "$RUNNER_TEMP/logs/ide-compile-check.log"
 
       # A standalone built from each runtime of the package (Linux x86-64
@@ -887,6 +854,7 @@ jobs:
       # runtime folder's binaries are checked first
       # (tools/ci/standalone_check.py)
       - name: Standalone check
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         timeout-minutes: 15
         run: |
           python3 tools/ci/standalone_check.py --install "$OXT_ROOT" --platform linux-x86_64 --targets all \
@@ -899,6 +867,7 @@ jobs:
       # seeks when clicked (tools/ci/media_check.py; the snapshots of the
       # controller go with the logs)
       - name: Browser and player check
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           python3 tools/ci/media_check.py --install "$OXT_ROOT" --platform linux-x86_64 \
@@ -911,6 +880,7 @@ jobs:
       # (engine/src/linux.stubs) is in the launcher's list, the base system
       # or the package
       - name: Check the system libraries (ldd and the launcher's list)
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         run: |
           python3 tools/ci/check_linux_libraries.py --root "$OXT_ROOT" --repo . \
             --json "$RUNNER_TEMP/logs/linux-libraries.json"
@@ -918,26 +888,29 @@ jobs:
       # The package's desktop entry as staged (install.sh only replaces its
       # Exec and TryExec lines; the test below validates the installed one)
       - name: Validate the desktop entry
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         run: |
-          out=$(desktop-file-validate "$OXT_ROOT/linux/oxt-beyond.desktop" 2>&1) || { echo "$out"; exit 1; }
+          out=$(desktop-file-validate "$OXT_ROOT/linux/openxtalk-lite.desktop" 2>&1) || { echo "$out"; exit 1; }
           echo "${out:-desktop-file-validate: no errors, warnings or hints}"
           if printf '%s\n' "$out" | grep -E 'error:|warning:'; then exit 1; fi
 
       # The launcher with a stand-in engine (missing libraries, the browser
       # switch, links), then install.sh and uninstall.sh in scratch home
       # folders: the files they add and remove, the installed engine run
-      # through ~/.local/bin/oxt-beyond, and the desktop entry
+      # through ~/.local/bin/openxtalk-lite, and the desktop entry
       # (desktop-file-validate) with a plain and an awkward install path
       - name: Test the launcher and the install scripts
+        if: ${{ !cancelled() && steps.extract.outcome == 'success' }}
         timeout-minutes: 30
         run: |
           python3 tools/ci/test_linux_package.py --root "$OXT_ROOT" --require-desktop-tools \
             2>&1 | tee "$RUNNER_TEMP/logs/test-linux-package.log"
 
       - name: Upload the package
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-linux-x86_64
+          name: OpenXTalk-Lite-linux-x86_64
           path: dist/*
           if-no-files-found: error
           retention-days: 30

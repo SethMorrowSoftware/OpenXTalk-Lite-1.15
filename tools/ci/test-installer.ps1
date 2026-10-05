@@ -268,7 +268,7 @@ try {
     Write-Host 'Installed files:'
     $keyFiles = @(
         $ExeName, '.version', '.buildnumber', 'edition.txt', 'about.dat',
-        'LICENSE', 'LICENSE-EXCEPTION.md', 'THIRD-PARTY-NOTICES.md',
+        'LICENSE',
         'revsecurity.dll', 'revpdfprinter.dll', 'unins000.exe', 'unins000.dat',
         'Toolset\home.livecodescript',
         'Externals\Externals.txt', 'Externals\revdb.dll', 'Externals\revxml.dll', 'Externals\revzip.dll',

@@ -1,88 +1,71 @@
-# Builds the OXT-Beyond engine for macOS on GitHub-hosted runners: Apple
-# Silicon (arm64) on macos-15 and Intel (x86_64) on macos-15-intel. Each
-# architecture is built natively on its own runner with the same steps and
-# ends as an artifact of its own ("Build mac-<arch>"). Then
+# Builds OpenXTalk Lite 1.15 (Tom Perry's source at the tag tom-perry-1.15,
+# with the build changes after it) for macOS on GitHub-hosted runners: Apple
+# Silicon (arm64) on macos-15 and Intel (x86_64) on macos-15-intel, each
+# natively, as an artifact of its own ("Build mac-<arch>"). Adapted from
+# OXT-Beyond's workflow of the same name; see README.md. Tom Perry's macOS
+# engine work lives in separate source trees (openxtalk/OpenXTalk-Lite,
+# macos-intel/ and macos-arm64/) and is not in this one: these builds are
+# of his Windows tree with the portability fixes from his macOS trees and
+# OXT-Beyond's macOS port of the build files (the commits after
+# tom-perry-1.15). Then
 #
 #   "Package mac-universal" (macos-15) joins the two builds into one
 #   universal build output with lipo (tools/ci/merge_universal.py, dSYM
-#   bundles included), stages OXT-Beyond.app from it with the external
-#   assets and the xTalk Suite extensions (tools/oxt/package.py --platform
-#   mac-universal), signs it ad hoc from the inside out
-#   (tools/ci/sign_mac_app.py), checks that every Mach-O file of macOS code
-#   in it holds arm64 and x86_64, and writes
+#   bundles included), stages OpenXTalk-Lite.app from it with the external
+#   asset oxt-runtimes-1.15 (tools/oxt/package.py --platform mac-universal),
+#   signs it ad hoc from the inside out (tools/ci/sign_mac_app.py), checks
+#   that every Mach-O file of macOS code in it holds arm64 and x86_64, and
+#   writes
 #
-#     OXT-Beyond-<ver>-mac-universal.dmg              the app and a link to
-#                                                     /Applications
-#     OXT-Beyond-<ver>-mac-universal.zip              the app (ditto)
-#     OXT-Beyond-<ver>-mac-universal-binaries.tar.xz  the merged build
-#                                                     output, signed ad hoc,
-#                                                     without the build's
-#                                                     own tools (GENTLE's
-#                                                     among them)
-#     OXT-Beyond-<ver>-mac-universal-symbols.zip      the universal dSYMs
+#     OpenXTalk-Lite-<ver>-mac-universal.dmg              the app and a link
+#                                                         to /Applications
+#     OpenXTalk-Lite-<ver>-mac-universal.zip              the app (ditto)
+#     OpenXTalk-Lite-<ver>-mac-universal-binaries.tar.xz  the merged build
+#                                                         output, signed ad
+#                                                         hoc, without the
+#                                                         build's own tools
+#                                                         (GENTLE's among
+#                                                         them)
+#     OpenXTalk-Lite-<ver>-mac-universal-symbols.zip      the universal dSYMs
 #     SHA256SUMS
 #
 #   (tools/oxt/package_dist.py --dmg) as the artifact
-#   OXT-Beyond-mac-universal, kept for 30 days (logs for 14);
+#   OpenXTalk-Lite-mac-universal;
 #
 #   "Test mac-universal (<arch>)" (macos-15 and macos-15-intel, so that
 #   each slice runs) installs the app from the disk image into a neutral
-#   folder and runs codesign --verify --deep --strict, the headless smoke
-#   test (which loads and calls every bundled xTalk Suite extension; their
-#   libraries need macOS 15, which both runners have), the extension
-#   library check, the IDE compile check and the standalone check: the
-#   runtimes' structure and signatures, and a standalone built from the
-#   packaged Standalone-blank.app with the engine's deploy command, signed
-#   as the IDE signs one, and run, and a standalone built from each
-#   Windows and Linux runtime of the package and checked as a file of its
-#   format and architecture (tools/ci/standalone_check.py). It also
-#   extracts the zip and verifies its signature.
+#   folder and checks its signature, then runs the headless smoke test, the
+#   extension library check, the IDE compile check, the standalone check,
+#   the browser and player check, the zip and an IDE start.
 #
-# The artifact is uploaded before the test jobs run, so a release has to
-# need both the package and the test jobs: .github/workflows/release.yml
-# calls this workflow (workflow_call) for a tag that starts with "v" and for
-# its dry runs, and its publishing job needs the whole called workflow,
-# every job of it; this workflow no longer runs on tags of its own. The
-# input release makes a called run build as for a release (external assets
-# and xTalk Suite extensions never left out) also for a dry run on a
-# branch.
+# Each build job also runs the IDE compile check on the checkout's IDE and
+# the engine test suites of tests/. A failure that is not in the baselines
+# (tools/ci/*-baseline*.txt, which record how Tom Perry's code behaves)
+# fails the job. Every check after the build, the install or the packaging
+# runs even when an earlier check failed, so that a run reports all of
+# them.
 #
 # Signing is ad hoc (no Developer ID, no notarization): Gatekeeper blocks
-# the app until the user allows it (see the README's macOS section).
+# the app until the user allows it.
 #
 # Oldest supported macOS: 11 on Apple Silicon, 10.13 on Intel
-# (config/mac.gypi). The binaries record SDK 11.0 so both halves get the same
-# AppKit behaviour whatever SDK built them. The Verify step fails when a
-# Mach-O file of the output records anything else
+# (config/mac.gypi), checked for every Mach-O file
 # (tools/ci/check_macho_floor.py).
 #
 # Toolchain: Xcode 16.4 and its macOS SDK, Python 2.7 (built with pyenv and
 # cached; gyp and config.py need it) and the runner's JDK (headers only).
 #
-# Prebuilt libraries: LiveCode's download server no longer serves them, so
-# OpenSSL, ICU and the Thirdparty set (from the vendored thirdparty/) are
-# built from source on a cache miss and kept in the Actions cache, as in
-# build-linux.yml. Each runner builds only its own architecture's slice.
+# Prebuilt libraries: OpenSSL (1.1.1w) and ICU (58.2), and the Thirdparty
+# set from the vendored thirdparty/, are built from source on a cache miss
+# and kept in the Actions cache, as in build-linux.yml.
 #
-# Output: the artifact OXT-Beyond-mac-<arch>-bin holds the build products
-# (engines, externals, toolchain, packaged extensions) as a tar.xz, without
-# static libraries and debug symbols; OXT-Beyond-mac-<arch>-symbols holds
-# the dSYM bundles of the same folder, as a tar.xz to extract over it.
-# Neither holds the tools the build makes to build itself
-# (tools/ci/list_build_tools.py: GENTLE, which may not be redistributed,
-# among them). Both are kept for 30 days.
+# Version: <ver> is ide/.version, which is Tom Perry's (1.15). Releases are
+# tagged v<ver>-r<n>, as in build-linux.yml. OXT_BUILD_NUMBER is the input
+# build-number when release.yml gives one, else the UTC time at which each
+# job starts, as YYYYMMDDHHMM.
 #
-# Checks: the build products, their architecture, linkage and macOS floor,
-# the server engine running a script, and the IDE compile check of the
-# checkout's IDE with the new development engine
-# (tools/ci/run_livecode_check.py compile --repo-layout).
-#
-# Version: <ver> is the product version in ide/.version. A build of a tag
-# that starts with "v" fails straight away unless the tag is v<ver>, as in
-# build-windows.yml. OXT_BUILD_NUMBER is the input build-number when
-# release.yml gives one (the same for every job and platform of a
-# release); otherwise each job takes the UTC time at which it starts, as
-# YYYYMMDDHHMM.
+# Releases: .github/workflows/release.yml calls this workflow (workflow_call)
+# and its publishing job needs every job of it, the tests included.
 
 name: Build (macOS)
 
@@ -105,8 +88,7 @@ on:
         default: ''
       release:
         description: >-
-          Build as for a release: never leave out the external assets or the
-          xTalk Suite extensions
+          Build as for a release: never leave out the external assets
         type: boolean
         required: false
         default: false
@@ -182,10 +164,14 @@ jobs:
             echo "::error::ide/.version contains '$version'; expected a version such as 0.0.1 or 0.1.0-beta.1"
             exit 1
           fi
-          # [vV]: the Windows step's -like 'v*' ignores case
-          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == [vV]* ]] && [ "$REF_NAME" != "v$version" ]; then
-            echo "::error::Tag $REF_NAME does not match ide/.version ($version); the tag for this version is v$version"
-            exit 1
+          # A release tag is v<version>-r<n>, the nth release built from this
+          # repository ([vV]: the Windows step's -like 'v*' ignores case)
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == [vV]* ]]; then
+            rebuild=${REF_NAME#"v$version-r"}
+            if [ "$rebuild" = "$REF_NAME" ] || ! [[ $rebuild =~ ^[1-9][0-9]*$ ]]; then
+              echo "::error::Tag $REF_NAME does not match ide/.version ($version); the tags for this version are v$version-r1, v$version-r2 and so on"
+              exit 1
+            fi
           fi
           if [ -n "$BUILD_NUMBER_INPUT" ]; then
             # Digits only, as tools/oxt/package.py requires
@@ -198,7 +184,7 @@ jobs:
           else
             build_number=$(date -u +%Y%m%d%H%M)
           fi
-          echo "OXT-Beyond $version, build number $build_number"
+          echo "OpenXTalk-Lite $version, build number $build_number"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "build-number=$build_number" >> "$GITHUB_OUTPUT"
           echo "OXT_BUILD_NUMBER=$build_number" >> "$GITHUB_ENV"
@@ -313,6 +299,7 @@ jobs:
           grep -q '\*\* BUILD SUCCEEDED \*\*' "$RUNNER_TEMP/xcodebuild.log"
 
       - name: Verify build output
+        id: verify
         run: |
           R=_build/mac/Release
           ls -la "$R" 
@@ -392,7 +379,7 @@ jobs:
         run: |
           python3 tools/ci/list_build_tools.py _build/mac/Release > "$RUNNER_TEMP/build-tools.list"
           echo "Left out (the build's own tools): $(tr '\n' ' ' < "$RUNNER_TEMP/build-tools.list")"
-          tar -C _build/mac -cJf "OXT-Beyond-mac-$ARCH-bin.tar.xz" \
+          tar -C _build/mac -cJf "OpenXTalk-Lite-mac-$ARCH-bin.tar.xz" \
             --exclude '*.a' --exclude '*.dSYM' --exclude '*.hmap' -X "$RUNNER_TEMP/build-tools.list" Release
           # (grep -v exits 1 when it selects nothing; the check below reports that)
           (cd _build/mac && find Release -type d -name '*.dSYM' -prune | sort) \
@@ -401,9 +388,9 @@ jobs:
             echo "::error::no .dSYM bundles in _build/mac/Release"; exit 1
           fi
           echo "$(wc -l < "$RUNNER_TEMP/dsym.list" | tr -d ' ') dSYM bundles"
-          (cd _build/mac && tar -cJf "$GITHUB_WORKSPACE/OXT-Beyond-mac-$ARCH-symbols.tar.xz" -T "$RUNNER_TEMP/dsym.list")
-          ls -l OXT-Beyond-mac-"$ARCH"-*.tar.xz
-          for t in OXT-Beyond-mac-"$ARCH"-bin.tar.xz OXT-Beyond-mac-"$ARCH"-symbols.tar.xz; do
+          (cd _build/mac && tar -cJf "$GITHUB_WORKSPACE/OpenXTalk-Lite-mac-$ARCH-symbols.tar.xz" -T "$RUNNER_TEMP/dsym.list")
+          ls -l OpenXTalk-Lite-mac-"$ARCH"-*.tar.xz
+          for t in OpenXTalk-Lite-mac-"$ARCH"-bin.tar.xz OpenXTalk-Lite-mac-"$ARCH"-symbols.tar.xz; do
             tar -tJf "$t" > "$RUNNER_TEMP/members.txt"
             if grep -E '(^|/)(gentle|reflex)-' "$RUNNER_TEMP/members.txt"; then
               echo "::error::$t holds the GENTLE files above, which may not be redistributed"; exit 1
@@ -413,8 +400,8 @@ jobs:
       - name: Upload the build products
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-mac-${{ matrix.arch }}-bin
-          path: OXT-Beyond-mac-${{ matrix.arch }}-bin.tar.xz
+          name: OpenXTalk-Lite-mac-${{ matrix.arch }}-bin
+          path: OpenXTalk-Lite-mac-${{ matrix.arch }}-bin.tar.xz
           if-no-files-found: error
           retention-days: 30
           # The tarball is compressed already
@@ -423,8 +410,8 @@ jobs:
       - name: Upload the debug symbols
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-mac-${{ matrix.arch }}-symbols
-          path: OXT-Beyond-mac-${{ matrix.arch }}-symbols.tar.xz
+          name: OpenXTalk-Lite-mac-${{ matrix.arch }}-symbols
+          path: OpenXTalk-Lite-mac-${{ matrix.arch }}-symbols.tar.xz
           if-no-files-found: error
           retention-days: 30
           # The tarball is compressed already
@@ -440,6 +427,7 @@ jobs:
       # build to look at. python3 is the runner's (Python 2.7 is first on
       # PATH only as python and python2).
       - name: IDE compile check (repository)
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           python3 --version
@@ -461,6 +449,7 @@ jobs:
       # 4: the tests of four files at a time (one at a time they take about
       # 12 minutes here, starting the engine for each test).
       - name: Engine tests
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         timeout-minutes: 45
         run: python3 tools/ci/run_engine_tests.py --bin _build/mac/Release --jobs 4 --log engine-tests.log
 
@@ -477,7 +466,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # One universal OXT-Beyond.app from the two builds, signed ad hoc, as a
+  # One universal OpenXTalk-Lite.app from the two builds, signed ad hoc, as a
   # disk image, a zip and the merged build output with its symbols. Every
   # path below is under $RUNNER_TEMP (/Users/runner/work/_temp): no folder
   # there is named _build or *-bin, which would put the engine into
@@ -512,7 +501,7 @@ jobs:
           version="${version%"${version##*[![:space:]]}"}"
           if [ -z "$version" ]; then echo "::error::ide/.version is empty"; exit 1; fi
           build_number=${BUILD_NUMBER_INPUT:-$(date -u +%Y%m%d%H%M)}
-          echo "OXT-Beyond $version, build number $build_number"
+          echo "OpenXTalk-Lite $version, build number $build_number"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           {
             echo "VERSION=$version"
@@ -527,25 +516,25 @@ jobs:
       - name: Download the arm64 build
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-mac-arm64-bin
+          name: OpenXTalk-Lite-mac-arm64-bin
           path: ${{ runner.temp }}/artifacts/arm64
 
       - name: Download the arm64 symbols
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-mac-arm64-symbols
+          name: OpenXTalk-Lite-mac-arm64-symbols
           path: ${{ runner.temp }}/artifacts/arm64
 
       - name: Download the x86_64 build
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-mac-x86_64-bin
+          name: OpenXTalk-Lite-mac-x86_64-bin
           path: ${{ runner.temp }}/artifacts/x86_64
 
       - name: Download the x86_64 symbols
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-mac-x86_64-symbols
+          name: OpenXTalk-Lite-mac-x86_64-symbols
           path: ${{ runner.temp }}/artifacts/x86_64
 
       # Both tarballs of a build unpack as Release/: the symbols go over the
@@ -556,7 +545,7 @@ jobs:
           for arch in arm64 x86_64; do
             mkdir -p "$MAC/$arch"
             for kind in bin symbols; do
-              tarball="$RUNNER_TEMP/artifacts/$arch/OXT-Beyond-mac-$arch-$kind.tar.xz"
+              tarball="$RUNNER_TEMP/artifacts/$arch/OpenXTalk-Lite-mac-$arch-$kind.tar.xz"
               if [ ! -f "$tarball" ]; then echo "::error::$tarball is missing from the artifact"; exit 1; fi
               tar -C "$MAC/$arch" -xJf "$tarball"
             done
@@ -583,9 +572,9 @@ jobs:
       - name: Sign the merged build output
         run: python3 tools/ci/sign_mac_app.py "$MAC/universal/Release"
 
-      # The same caches as build-windows.yml (see there). actions/cache
-      # keeps Windows entries apart from macOS and Linux ones, so these
-      # keys do not restore the Windows job's files here.
+      # The same cache as build-windows.yml (see there). actions/cache keeps
+      # Windows entries apart from macOS and Linux ones, so this key does
+      # not restore the Windows job's files here.
       - name: Restore cached external assets
         id: assets-cache
         uses: actions/cache/restore@v6
@@ -593,39 +582,24 @@ jobs:
           path: prebuilt/fetched-assets/*.zip
           key: oxt-external-assets-${{ hashFiles('tools/oxt/external-assets.json') }}
 
-      - name: Restore cached xTalk extension files
-        id: xtalk-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: prebuilt/fetched-assets/xtalk
-          key: oxt-xtalk-extensions-${{ hashFiles('tools/oxt/xtalk-extensions.json') }}
-
-      # The external assets and the xTalk Suite extensions can be left out
-      # with the repository variables OXT_NO_EXTERNAL_ASSETS and
-      # OXT_NO_XTALK_EXTENSIONS (1), as in build-windows.yml, except in
+      # The external assets can be left out with the repository variable
+      # OXT_NO_EXTERNAL_ASSETS (1), as in build-windows.yml, except in
       # release builds (a tag, or the input release of release.yml, also in
-      # its dry runs). No Visual C++ runtime is bundled here (it comes from
-      # Visual Studio on the Windows runner), so the Windows libraries of
-      # enetxt and Box2Dxt in this package need the Visual C++
-      # Redistributable; package.py warns about it.
-      - name: Stage OXT-Beyond.app
+      # its dry runs). OpenXTalk Lite 1.15 has none of OXT-Beyond's xTalk
+      # Suite extensions, so they are always left out.
+      - name: Stage OpenXTalk-Lite.app
         env:
           NO_EXTERNAL_ASSETS: ${{ github.ref_type != 'tag' && !inputs.release && vars.OXT_NO_EXTERNAL_ASSETS == '1' }}
-          NO_XTALK_EXTENSIONS: ${{ github.ref_type != 'tag' && !inputs.release && vars.OXT_NO_XTALK_EXTENSIONS == '1' }}
         run: |
-          flags=
+          flags=--no-xtalk-extensions
           if [ "$NO_EXTERNAL_ASSETS" = true ]; then
             echo "::warning title=Package::External assets left out (OXT_NO_EXTERNAL_ASSETS): the package has no standalone runtimes for other platforms."
             flags="$flags --no-external-assets"
           fi
-          if [ "$NO_XTALK_EXTENSIONS" = true ]; then
-            echo "::warning title=Package::xTalk Suite extensions left out (OXT_NO_XTALK_EXTENSIONS)."
-            flags="$flags --no-xtalk-extensions"
-          fi
           python3 tools/oxt/package.py --platform mac-universal --bin "$MAC/universal/Release" \
             --out "$RUNNER_TEMP/stage" --summary-json "$RUNNER_TEMP/package-summary.json" $flags \
             2>&1 | tee "$LOGS/package.log"
-          app="$RUNNER_TEMP/stage/OXT-Beyond-$VERSION/OXT-Beyond.app"
+          app="$RUNNER_TEMP/stage/OpenXTalk-Lite-$VERSION/OpenXTalk-Lite.app"
           if [ ! -d "$app" ]; then echo "::error::package.py wrote no $app"; exit 1; fi
           echo "APP=$app" >> "$GITHUB_ENV"
 
@@ -637,16 +611,10 @@ jobs:
           path: prebuilt/fetched-assets/*.zip
           key: ${{ steps.assets-cache.outputs.cache-primary-key }}
 
-      - name: Save xTalk extension files to the cache
-        if: always() && steps.xtalk-cache.outputs.cache-hit != 'true' && hashFiles('prebuilt/fetched-assets/xtalk/**') != ''
-        continue-on-error: true
-        uses: actions/cache/save@v6
-        with:
-          path: prebuilt/fetched-assets/xtalk
-          key: ${{ steps.xtalk-cache.outputs.cache-primary-key }}
-
-      # What package.py generated: OXT-Beyond's identity (not LiveCode's),
-      # arm64 first, the Intel floor of the universal engine, the icon.
+      # What package.py generated: the app's identity (not LiveCode's),
+      # arm64 first, the Intel floor of the universal engine, and Tom Perry's
+      # icon byte for byte (a JPEG 2000 image, which icns.py check, written
+      # for PNG icons, does not read).
       # PlistBuddy exits 1 for a missing key; "|| true" keeps bash -e from
       # ending the step at the assignment, so that the comparison reports
       # the key and PlistBuddy's message ('Print: Entry, ... Does Not Exist').
@@ -659,18 +627,18 @@ jobs:
             if [ "$got" != "$2" ]; then echo "::error::Info.plist $1 is '$got', expected '$2'"; exit 1; fi
             echo "$1 = $got"
           }
-          check CFBundleIdentifier io.github.sethmorrowsoftware.oxt-beyond
-          check CFBundleExecutable OXT-Beyond
+          check CFBundleIdentifier io.github.sethmorrowsoftware.openxtalk-lite
+          check CFBundleExecutable OpenXTalk-Lite
           check CFBundleShortVersionString "$VERSION"
-          check CFBundleIconFile OXT-Beyond.icns
+          check CFBundleIconFile OpenXTalk-Lite.icns
           check LSMinimumSystemVersion 10.13
           check LSArchitecturePriority:0 arm64
           check LSArchitecturePriority:1 x86_64
           check UTExportedTypeDeclarations:0:UTTypeTagSpecification:public.filename-extension:0 oxtstack
           check UTExportedTypeDeclarations:1:UTTypeTagSpecification:public.filename-extension:0 oxtscript
-          python3 tools/oxt/icns.py check "$APP/Contents/Resources/OXT-Beyond.icns"
+          cmp "$APP/Contents/Resources/OpenXTalk-Lite.icns" Installer/openxtalk-lite/branding/OpenXTalk-Lite.icns
 
-      - name: Sign OXT-Beyond.app
+      - name: Sign OpenXTalk-Lite.app
         run: python3 tools/ci/sign_mac_app.py "$APP"
 
       # Every Mach-O file of macOS code in the app holds arm64 and x86_64
@@ -689,7 +657,7 @@ jobs:
       - name: Upload the packages
         uses: actions/upload-artifact@v7
         with:
-          name: OXT-Beyond-mac-universal
+          name: OpenXTalk-Lite-mac-universal
           path: ${{ runner.temp }}/dist/*
           if-no-files-found: error
           retention-days: 30
@@ -734,7 +702,7 @@ jobs:
       - name: Download the packages
         uses: actions/download-artifact@v8
         with:
-          name: OXT-Beyond-mac-universal
+          name: OpenXTalk-Lite-mac-universal
           path: ${{ runner.temp }}/dist
 
       - name: Check the download
@@ -756,8 +724,9 @@ jobs:
       # create does in the package job: up to four tries, as there. (In an
       # "if", a failed attach does not end the step under bash -e.)
       - name: Install from the disk image
+        id: install
         run: |
-          dmg="$RUNNER_TEMP/dist/OXT-Beyond-$VERSION-mac-universal.dmg"
+          dmg="$RUNNER_TEMP/dist/OpenXTalk-Lite-$VERSION-mac-universal.dmg"
           mnt="$RUNNER_TEMP/oxt-dmg"
           mkdir -p "$mnt" "$RUNNER_TEMP/oxt-test"
           for i in 1 2 3 4; do
@@ -767,15 +736,16 @@ jobs:
             sleep $((10*i))
           done
           ls -la "$mnt"
-          if [ ! -d "$mnt/OXT-Beyond.app" ]; then echo "::error::the disk image has no OXT-Beyond.app"; exit 1; fi
+          if [ ! -d "$mnt/OpenXTalk-Lite.app" ]; then echo "::error::the disk image has no OpenXTalk-Lite.app"; exit 1; fi
           if [ "$(readlink "$mnt/Applications")" != /Applications ]; then
             echo "::error::the disk image has no link to /Applications"; exit 1
           fi
-          ditto "$mnt/OXT-Beyond.app" "$RUNNER_TEMP/oxt-test/OXT-Beyond.app"
+          ditto "$mnt/OpenXTalk-Lite.app" "$RUNNER_TEMP/oxt-test/OpenXTalk-Lite.app"
           hdiutil detach "$mnt" || hdiutil detach -force "$mnt"
-          echo "APP=$RUNNER_TEMP/oxt-test/OXT-Beyond.app" >> "$GITHUB_ENV"
+          echo "APP=$RUNNER_TEMP/oxt-test/OpenXTalk-Lite.app" >> "$GITHUB_ENV"
 
       - name: Verify the signature
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           codesign --verify --deep --strict --verbose=2 "$APP"
           codesign --display --verbose=2 "$APP" 2>&1 | grep -E '^(Identifier|Format|Signature|CodeDirectory)' || true
@@ -783,29 +753,31 @@ jobs:
 
       # The headless smoke test of the installed app (the engine in
       # Contents/MacOS, the IDE, externals and extensions in
-      # Contents/Tools): script engine, SQLite, revXML, revZip, and every
-      # bundled xTalk Suite extension loaded and called
+      # Contents/Tools): script engine, SQLite, revXML and revZip
       - name: Smoke test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 15
         run: |
           python3 tools/ci/run_livecode_check.py smoke --install "$RUNNER_TEMP/oxt-test" --platform mac-universal \
             --log "$LOGS/smoke-test.log"
 
       # Every native library of the bundled extensions finds what it needs
-      # on a user's Mac and holds both architectures. The xTalk Suite
-      # libraries need macOS 15 (the floor printed per library); nothing
-      # may need more.
+      # on a user's Mac and holds both architectures, and none needs a macOS
+      # newer than 15 (the floor printed per library).
       - name: Check the extension libraries
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           python3 tools/ci/check_native_deps.py --root "$APP/Contents/Tools" --platform mac --max-macos 15.0
 
       - name: IDE compile check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           python3 tools/ci/run_livecode_check.py compile --install "$RUNNER_TEMP/oxt-test" --platform mac-universal \
             --log "$LOGS/ide-compile-check.log"
 
       - name: Standalone check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 15
         run: |
           python3 tools/ci/standalone_check.py --install "$RUNNER_TEMP/oxt-test" --platform mac-universal --targets all \
@@ -816,6 +788,7 @@ jobs:
       # JavaScript calls back into the script, a WAV and an MP4 file play,
       # pause and end (tools/ci/media_check.py)
       - name: Browser and player check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           python3 tools/ci/media_check.py --install "$RUNNER_TEMP/oxt-test" --platform mac-universal \
@@ -823,41 +796,24 @@ jobs:
 
       # The zip must give the same, still valid, app
       - name: Check the zip
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           dest="$RUNNER_TEMP/oxt-zip"
           mkdir -p "$dest"
-          ditto -x -k "$RUNNER_TEMP/dist/OXT-Beyond-$VERSION-mac-universal.zip" "$dest"
-          codesign --verify --deep --strict "$dest/OXT-Beyond.app"
-          diff -rq "$APP" "$dest/OXT-Beyond.app"
+          ditto -x -k "$RUNNER_TEMP/dist/OpenXTalk-Lite-$VERSION-mac-universal.zip" "$dest"
+          codesign --verify --deep --strict "$dest/OpenXTalk-Lite.app"
+          diff -rq "$APP" "$dest/OpenXTalk-Lite.app"
           echo "The zip holds the same app as the disk image."
 
-      # The light and dark appearance, with a user interface (the tests
-      # above run the engine with -ui, which has no appearance): the app's
-      # engine runs tools/ci/render-test.livecodescript (S1, S2 and S9) as
-      # its home stack with the Mac set to dark and to light (defaults
-      # write/delete -g AppleInterfaceStyle), with the appAppearance
-      # "system" and the default. The systemAppearance must be the Mac's
-      # setting, a stack is drawn dark only with "system" on the dark Mac,
-      # where its native controls are drawn dark (MCMacDrawThemeDark,
-      # engine/src/osxtheme.mm), and the light-designed stack keeps its
-      # black input text (tools/ci/mac_appearance_test.py). The script
-      # restores the Mac's setting; the images and the engine's output are
-      # in the logs, and the cards of S2 and S9 are printed into this log
-      # (tools/ci/print_images.py). It runs last, after the app was
-      # compared with the zip.
       # The IDE as a user starts it, with its home stack, menu bar and
       # palettes, still running after 90 seconds; the other steps run the
       # engine with -ui or a test stack of their own
       # (tools/ci/mac_ide_start.sh, which prints the crash report if not)
       - name: Start the IDE
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           tools/ci/mac_ide_start.sh "$APP" "$LOGS/ide-start"
-
-      - name: Appearance test
-        timeout-minutes: 15
-        run: |
-          python3 tools/ci/mac_appearance_test.py --app "$APP" --out "$LOGS/appearance"
 
       - name: Upload logs
         if: always()

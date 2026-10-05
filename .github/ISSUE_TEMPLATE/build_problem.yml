@@ -1,132 +1,47 @@
-name: Build problem
-description: Building OXT-Beyond from source fails.
-labels: ["bug"]
+name: Build, CI or packaging problem
+description: The build, a CI check, the packaging or a release of this repository does not work.
+labels: ["build"]
 body:
   - type: markdown
     attributes:
       value: |
-        Before you file this, please read the troubleshooting section of
-        [BUILDING.md](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond/blob/main/BUILDING.md#8-troubleshooting).
-        Many Windows build failures come from a missing Visual Studio
-        component, Python 3 being used instead of Python 2.7 for the build
-        (packaging needs Python 3), or the wrong `bash` (Git's or WSL's
-        instead of Cygwin's). Linux and macOS builds follow the steps of
-        their CI workflows; see
-        [Building on Linux](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond/blob/main/BUILDING.md#12-building-on-linux)
-        and
-        [Building on macOS](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond/blob/main/BUILDING.md#13-building-on-macos).
+        This repository builds, tests and packages Tom Perry's OpenXTalk Lite 1.15 as it is. Use this form when that machinery fails: a build that does not compile, a check that fails for a reason other than Tom Perry's code, a package or release that is wrong.
 
-  - type: dropdown
-    id: platform
-    attributes:
-      label: Which platform are you building for?
-      options:
-        - Windows x64
-        - macOS Apple Silicon
-        - macOS Intel
-        - Linux x86-64
-    validations:
-      required: true
+        A test that fails because of a bug in OpenXTalk Lite 1.15 itself belongs in the baselines (`tools/ci/*-baseline*.txt`), with a comment saying why; its fix belongs in [OXT-Beyond](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond).
 
   - type: dropdown
     id: where
     attributes:
-      label: Where does the build run?
+      label: Where does it fail?
       options:
-        - On my own computer
-        - GitHub Actions in my fork
+        - Windows build (build-windows.yml)
+        - Linux build (build-linux.yml)
+        - macOS build (build-macos.yml)
+        - Pristine guard (pristine-guard.yml)
+        - Release (release.yml, tag-release.yml)
+        - A local build
     validations:
       required: true
 
   - type: input
-    id: commit
+    id: run
     attributes:
-      label: Commit
-      description: Output of `git rev-parse --short HEAD`, and the branch if it is not `main`.
-    validations:
-      required: true
-
-  - type: dropdown
-    id: step
-    attributes:
-      label: Which step fails?
-      options:
-        - Installing the tools
-        - Cloning the repository
-        - Linting the IDE sources (tools/ci/check_ide_*.py, check_se_schemes.py)
-        - Configuring (config.py, configure.bat, make config-linux-* or config.sh)
-        - Building or fetching the prebuilt libraries
-        - Building (make.cmd or msbuild, make, or xcodebuild)
-        - Running the built IDE
-        - Fetching the external assets (oxt-runtimes, tools/oxt/fetch_assets.py)
-        - Packaging (tools/ci/package-windows.ps1, tools/oxt/package.py or package_dist.py)
-        - Joining or signing the macOS app (tools/ci/merge_universal.py, sign_mac_app.py)
-        - Smoke test (tools/ci/smoke-test.ps1 or run_livecode_check.py smoke)
-        - IDE compile check (tools/ci/ide-compile-check.ps1 or run_livecode_check.py compile)
-        - Engine tests (tools/ci/run_engine_tests.py)
-        - IDE contrast check or render test (tools/ci/ide-contrast-check.ps1, render-test.ps1)
-        - macOS appearance test (tools/ci/mac_appearance_test.py)
-        - Testing the Linux package (check_linux_libraries.py, test_linux_package.py)
-        - Building the Windows installer (tools/ci/build-installer.ps1)
-        - Testing the Windows installer (tools/ci/test-installer.ps1)
-        - Something else
+      label: Workflow run or commit
+      description: The link to the failed run, or the commit you built (`git rev-parse --short HEAD`).
     validations:
       required: true
 
   - type: textarea
-    id: tools
+    id: what
     attributes:
-      label: Tool versions
-      description: |
-        Please give, on Windows:
-        - Windows version (`winver`);
-        - Visual Studio edition and version, and whether the v141 components are installed
-          (`powershell -ExecutionPolicy Bypass -File tools\ci\install-vs-components.ps1 -VerifyOnly`);
-        - Windows SDK version, if you set `WINSDK_VERSION`;
-        - `C:\Python27\python.exe --version`;
-        - for packaging, `py -3 --version` (or `python3 --version`);
-        - for the installer, the Inno Setup version (the first line of `ISCC.exe` output, or *Help > About* in the Inno Setup IDE);
-        - `perl -e "print $^V, ' ', $^O"`;
-        - `git --version`;
-        - `C:\cygwin64\bin\bison.exe --version` and `C:\cygwin64\bin\flex.exe --version` (first lines);
-        - any of `BUILDTYPE`, `VSINSTALLDIR`, `WINSDK_VERSION`, `MSBUILD_EXTRA_ARGS`, `CYGPATH`, `PREBUILT_*`, `OXT_ASSETS_CACHE` or `OXT_BUILD_NUMBER` that you set.
-
-        On Linux: the distribution and version (`/etc/os-release`), `gcc --version`, `python --version`
-        (Python 2.7), `python3 --version`, `ldd --version` (first line), and the `PREBUILT_*`,
-        `MODE`, `BUILDTYPE` or `OXT_*` variables you set.
-
-        On macOS: `sw_vers`, `uname -m`, `xcodebuild -version`, `python --version` (Python 2.7),
-        `python3 --version`, and the `PREBUILT_*`, `TARGET_ARCH`, `XCODE_*` or `OXT_*` variables you set.
-    validations:
-      required: true
-
-  - type: textarea
-    id: commands
-    attributes:
-      label: Commands you ran
-      description: The commands, in order, and the folder you ran them in.
+      label: What happened
+      description: The failing step and the relevant lines of its log or of the job summary.
       render: text
     validations:
       required: true
 
   - type: textarea
-    id: log
+    id: notes
     attributes:
-      label: Error output
-      description: >
-        For Windows build failures, search `build-win-x86_64\msbuild.log` for
-        the first line containing `error` and paste about 30 lines before and
-        after it; for Linux (make) and macOS (xcodebuild) builds, the first
-        error in the build output and the lines around it. For other steps,
-        paste the console output.
-      render: text
-    validations:
-      required: true
-
-  - type: textarea
-    id: other
-    attributes:
-      label: Anything else?
-      description: >
-        What you have already tried. You can attach the whole `msbuild.log`
-        or build log here (zip it first).
+      label: Anything else
+      description: What you tried, and whether OXT-Beyond's build of the same step passes.

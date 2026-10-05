@@ -108,7 +108,7 @@ stage folder itself except on macOS):
                minimum macOS of the engine's slices) and its icon,
                Contents/Resources/OpenXTalk-Lite.icns (tools/oxt/icns.py,
                from Installer/openxtalk-lite/branding/png).
-  licences     LICENSE, LICENSE-EXCEPTION.md and THIRD-PARTY-NOTICES.md from
+  licences     LICENSE (LiveCode Community's, as Tom Perry's tree has it) from
                the repository root (CRLF line endings on Windows).
   assets       the archives in tools/oxt/external-assets.json (see
                fetch_assets.py), unless --no-external-assets.

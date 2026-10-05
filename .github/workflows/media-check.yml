@@ -28,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: The release to check (for example v0.2.1-rc.3); empty for the latest one
+        description: The release to check (for example v1.15-r1); empty for the latest one
         type: string
         default: ''
 
@@ -104,7 +104,7 @@ jobs:
           done < Installer/linux/libraries.txt
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${pkgs[@]}"
 
-      # The macOS zip holds OXT-Beyond.app, which ditto extracts as Finder
+      # The macOS zip holds OpenXTalk-Lite.app, which ditto extracts as Finder
       # does; the others are extracted by the check itself
       - name: Extract the app
         if: runner.os == 'macOS'
@@ -127,7 +127,7 @@ jobs:
       - name: Start the IDE
         if: always() && runner.os == 'macOS'
         run: |
-          tools/ci/mac_ide_start.sh "$RUNNER_TEMP/oxt-test/OXT-Beyond.app" "$RUNNER_TEMP/ide-start"
+          tools/ci/mac_ide_start.sh "$RUNNER_TEMP/oxt-test/OpenXTalk-Lite.app" "$RUNNER_TEMP/ide-start"
 
       - name: Upload the IDE start
         if: always() && runner.os == 'macOS'
