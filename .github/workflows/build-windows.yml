@@ -1,5 +1,6 @@
-# Builds OpenXTalk Lite 1.15 (Tom Perry's source at the tag tom-perry-1.15,
-# with the build changes after it) for Windows x86-64 (Release) on a
+# Builds OpenXTalk Lite 1.15 (Tom Perry's source, his Windows and macOS
+# working copies merged at the tag tom-perry-1.15-merged, with the build
+# changes after it; CHANGES-FROM-TOM.md lists them) for Windows x86-64 (Release) on a
 # GitHub-hosted windows-2022 runner, checks the result and packages it.
 # Adapted from OXT-Beyond's workflow of the same name; see README.md.
 #

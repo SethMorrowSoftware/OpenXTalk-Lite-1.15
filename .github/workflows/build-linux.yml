@@ -1,5 +1,6 @@
-# Builds OpenXTalk Lite 1.15 (Tom Perry's source at the tag tom-perry-1.15,
-# with the build changes after it) for Linux x86_64, arm64 and x86 on
+# Builds OpenXTalk Lite 1.15 (Tom Perry's source, his Windows and macOS
+# working copies merged at the tag tom-perry-1.15-merged, with the build
+# changes after it; CHANGES-FROM-TOM.md lists them) for Linux x86_64, arm64 and x86 on
 # GitHub-hosted runners, checks it and packages the x86_64 build. Adapted
 # from OXT-Beyond's workflow of the same name; see README.md.
 #
@@ -8,8 +9,8 @@
 # and GCC 10's libstdc++ are the oldest the binaries need (the Verify step
 # checks every ELF file with tools/ci/check_elf_floor.py), and Ubuntu 20.04
 # still has the Python 2.7 that gyp and config.py need. Tom Perry built his
-# 9.x engine for Windows only; these builds use OXT-Beyond's Linux port of
-# the build files (the commits after tom-perry-1.15).
+# 9.x engine for Windows and macOS (his Linux work was a separate 7.x
+# engine); these builds use OXT-Beyond's Linux port of the build files.
 #
 # Prebuilt libraries: LiveCode's download server no longer serves them, so
 # they are built here from the versions pinned in prebuilt/versions (the

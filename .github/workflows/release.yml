@@ -21,8 +21,8 @@
 #               OpenXTalk-Lite-linux-x86_64   program tar.xz, binaries and
 #                                             symbols tar.xz
 #             each with its own SHA256SUMS;
-#   guard     the pristine guard (pristine-guard.yml): nothing outside
-#             .github/pristine-allowlist.txt differs from tom-perry-1.15;
+#   guard     the pristine guard (pristine-guard.yml): every difference
+#             from Tom Perry's source is documented in CHANGES-FROM-TOM.md;
 #   publish   runs only when every job of the three builds and the guard
 #             has passed. It downloads the three artifacts, checks each
 #             against its SHA256SUMS and the release's file list, writes one

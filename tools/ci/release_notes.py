@@ -83,7 +83,7 @@ The executables are not code-signed, so Windows SmartScreen may warn when they a
 
 ## macOS (Apple Silicon and Intel)
 
-One universal app, `OpenXTalk-Lite.app`. It needs macOS 11 Big Sur or later on Apple Silicon, or macOS 10.13 High Sierra or later on an Intel Mac. Tom Perry's own macOS engine work (dark mode, macSetIcon) is in separate source trees and not in this build, which is of his Windows tree with the portability fixes from his macOS trees.
+One universal app, `OpenXTalk-Lite.app`, with Tom Perry's macOS engine work (his macOS dark mode, AppKit drawing, macSetIcon and the macOS ARM standalone builder). It needs macOS 11 Big Sur or later on Apple Silicon, or macOS 10.13 High Sierra or later on an Intel Mac.
 
 - `{root}-mac-universal.dmg`: the disk image. Open it and drag OpenXTalk-Lite onto the Applications folder next to it.
 - `{root}-mac-universal.zip`: the same app, for scripted installs (`ditto -x -k {root}-mac-universal.zip /Applications`).
@@ -104,7 +104,7 @@ xattr -dr com.apple.quarantine /Applications/OpenXTalk-Lite.app
 
 ## Linux (x86-64)
 
-Needs 64-bit x86 Linux with glibc 2.31 or later (Ubuntu 20.04, Debian 11, Fedora 32 or later) and an X11 desktop (on Wayland it runs through XWayland), with GTK 2: on Debian and Ubuntu the package `libgtk2.0-0` (`libgtk2.0-0t64` on Ubuntu 24.04 and Debian 13), on Fedora `gtk2`. The launcher names any library that is missing, with its package. The browser widget and revBrowser also need NSS, ALSA and a few more X11 libraries; without them the launcher turns the browser off. Tom Perry's own Linux work was a separate 7.x engine line; this is his 9.x tree built for Linux.
+Needs 64-bit x86 Linux with glibc 2.31 or later (Ubuntu 20.04, Debian 11, Fedora 32 or later) and an X11 desktop (on Wayland it runs through XWayland), with GTK 2: on Debian and Ubuntu the package `libgtk2.0-0` (`libgtk2.0-0t64` on Ubuntu 24.04 and Debian 13), on Fedora `gtk2`. The launcher names any library that is missing, with its package. The browser widget and revBrowser also need NSS, ALSA and a few more X11 libraries; without them the launcher turns the browser off. Tom Perry's own Linux work was a separate 7.x engine line; this is his 9.x engine built for Linux.
 
 - `{root}-linux-x86_64.tar.xz`: the program folder `{root}`. Extract it onto a Linux file system (not FAT, exFAT or a Windows drive) and run `./openxtalk-lite` in it, or run `./install.sh` to install it for yourself: under `~/.local/share/openxtalk-lite`, with a menu entry, icons, the .oxtstack and .oxtscript file types and the command `openxtalk-lite`, without administrator rights.
 - `{root}-linux-x86_64-binaries.tar.xz`: the engine, externals and tools as built (`linux-x86_64-bin`), without debug symbols and the build's own tools, plus the licence.
@@ -124,7 +124,7 @@ Needs 64-bit x86 Linux with glibc 2.31 or later (Ubuntu 20.04, Debian 11, Fedora
 
 Made by the "Release" workflow (`.github/workflows/release.yml`){commit}, which builds and tests all three platforms and publishes the release only when every package has passed.
 
-- **The code** is Tom Perry's OpenXTalk Lite 1.15, the tree at the tag `tom-perry-1.15`: the OpenXTalk Lite IDE 1.15 and his 9.7.1-OXT engine work, on LiveCode Community 9.7 develop. The commits after that tag change only what is needed to build it on current compilers and systems, and the CI, tests and packaging; `.github/pristine-allowlist.txt` lists every file they may touch, and the "Pristine guard" workflow checks it on every change.
+- **The code** is Tom Perry's OpenXTalk Lite 1.15: the OpenXTalk Lite IDE 1.15 and his 9.7.1-OXT engine work, his Windows and macOS working copies merged into one tree (the tag `tom-perry-1.15-merged`), on LiveCode Community 9.7 develop. The commits after it change only what is needed to build it on current compilers and systems, and the CI, tests and packaging. `CHANGES-FROM-TOM.md` lists every difference from his source and why, and the "Pristine guard" workflow checks that the list is complete.
 - **The tests** are known to fail in places: `tools/ci/*-baseline*.txt` records each failure of Tom Perry's code, which is kept as it is.
 - **The standalone runtimes** for the platforms other than each package's own (Windows x86, Linux and Android) are OpenXTalk Lite 1.15's own, unchanged (the asset `oxt-runtimes-1.15`).
 - **The prebuilt libraries** are LiveCode's own on Windows (OpenSSL 1.1.1g, curl 7.51.0, ICU 58.2, CEF 74), and built from source with the same versions on macOS and Linux (OpenSSL 1.1.1w there: 1.1.1g cannot be linked on arm64).

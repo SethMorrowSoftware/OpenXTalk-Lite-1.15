@@ -4,11 +4,11 @@
 
 ## Pristine check
 
-This repository keeps Tom Perry's OpenXTalk Lite 1.15 as it is (the tag
-`tom-perry-1.15`). Tick one:
+This repository keeps Tom Perry's OpenXTalk Lite 1.15 as it is (his two
+working copies, merged at the tag `tom-perry-1.15-merged`). Tick one:
 
 - [ ] Only this repository's own files change (`.github/`, `tools/ci/`, `tools/oxt/`, `tests/`, `Installer/openxtalk-lite/`, `Installer/linux/`, documentation)
-- [ ] It changes Tom Perry's files **only because the build needs it** on a current compiler, SDK or system, and adds each such file to the `[build]` section of `.github/pristine-allowlist.txt`; the commit message says what fails to build without it
+- [ ] It changes Tom Perry's files **only because the build needs it** on a current compiler, SDK or system, and adds a section to `CHANGES-FROM-TOM.md` naming each such file, what changes in it and why; the commit message says what fails to build without it
 
 Fixes of bugs and new features do not belong here; they belong in
 [OXT-Beyond](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond). A test

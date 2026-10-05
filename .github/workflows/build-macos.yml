@@ -1,13 +1,13 @@
-# Builds OpenXTalk Lite 1.15 (Tom Perry's source at the tag tom-perry-1.15,
-# with the build changes after it) for macOS on GitHub-hosted runners: Apple
+# Builds OpenXTalk Lite 1.15 (Tom Perry's source, his Windows and macOS
+# working copies merged at the tag tom-perry-1.15-merged, with the build
+# changes after it; CHANGES-FROM-TOM.md lists them) for macOS on GitHub-hosted runners: Apple
 # Silicon (arm64) on macos-15 and Intel (x86_64) on macos-15-intel, each
 # natively, as an artifact of its own ("Build mac-<arch>"). Adapted from
-# OXT-Beyond's workflow of the same name; see README.md. Tom Perry's macOS
-# engine work lives in separate source trees (openxtalk/OpenXTalk-Lite,
-# macos-intel/ and macos-arm64/) and is not in this one: these builds are
-# of his Windows tree with the portability fixes from his macOS trees and
-# OXT-Beyond's macOS port of the build files (the commits after
-# tom-perry-1.15). Then
+# OXT-Beyond's workflow of the same name; see README.md. The engine is Tom
+# Perry's macOS engine work (his Apple Silicon working copy, which holds his
+# Intel work, merged with his Windows one), built with gyp and the
+# installed Xcode instead of his hand-edited Xcode projects, for one
+# universal app. Then
 #
 #   "Package mac-universal" (macos-15) joins the two builds into one
 #   universal build output with lipo (tools/ci/merge_universal.py, dSYM
