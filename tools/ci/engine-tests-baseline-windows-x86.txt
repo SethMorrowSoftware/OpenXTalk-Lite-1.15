@@ -3,7 +3,7 @@
 # that are not in engine-tests-baseline.txt or
 # engine-tests-baseline-windows.txt. One "<suite>: <test>" per line; "? "
 # before it: fails only sometimes; text after " #" is a comment. Each comes
-# from 32-bit x86 itself (its type sizes), not from a fault in OXT-Beyond's
+# from 32-bit x86 itself (its type sizes), not from a fault in the
 # code.
 
 # Type code q is "naturalfloat", the platform's natural float: a double on

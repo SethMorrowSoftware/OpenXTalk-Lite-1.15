@@ -16,7 +16,7 @@
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
 """Build an oxt-runtimes-<label>.zip release asset: the standalone runtimes
-that OXT-Beyond's packages install for platforms other than their own, so
+that OpenXTalk-Lite's packages install for platforms other than their own, so
 that every package can build standalones for all of them. tools/oxt/
 package.py installs the asset's files at their paths in the installed
 layout, without the parts the package's own build makes (the asset's
@@ -32,8 +32,8 @@ From this repository's builds (--builds; the current asset)
       [--run BUILDS=URL]... [--update-manifest [FILE]]
 
 Each PATH is a build output folder or the CI archive that holds one
-(OXT-Beyond-win-x86-bin.zip, OXT-Beyond-<ver>-win-x86_64-binaries.zip,
-OXT-Beyond-linux-<arch>-bin.tar.xz), which is extracted to a temporary
+(OpenXTalk-Lite-win-x86-bin.zip, OpenXTalk-Lite-<ver>-win-x86_64-binaries.zip,
+OpenXTalk-Lite-linux-<arch>-bin.tar.xz), which is extracted to a temporary
 folder first. From each build the asset takes what package.py installs as
 that platform's own runtime, with package.py's tables
 (package.plan_runtimes), and the timezone library's code for it:
@@ -73,7 +73,7 @@ From an installed OpenXTalk Lite folder (how oxt-runtimes-1.15 was made)
 
 The contents of openxtalk-lite-1.15-win-noinstaller.7z. The asset holds the
 files of the installed layout that this repository's Windows x86-64 build
-did not produce but OXT Lite ships, so that OXT-Beyond packages could offer
+did not produce but OXT Lite ships, so that OpenXTalk-Lite packages could offer
 the same standalone targets:
 
   Runtime/Windows/x86-32/**      (except Support/Sample Icons, which
@@ -135,7 +135,7 @@ import fetch_assets  # noqa: E402
 import layout  # noqa: E402
 import package  # noqa: E402
 
-REPO_URL = 'https://github.com/SethMorrowSoftware/OpenXTalk-Beyond'
+REPO_URL = 'https://github.com/SethMorrowSoftware/OpenXTalk-Lite-1.15'
 RELEASE_TAG_FMT = 'runtimes-{version}'
 DEFAULT_MANIFEST = os.path.join(HERE, 'external-assets.json')
 
@@ -324,10 +324,10 @@ def provenance(name, root, infos, empty, stock, stock_setup, source_archive, lef
     add = L.append
     add('# %s: prebuilt files from OpenXTalk Lite %s' % (name, version))
     add('')
-    add('This archive is an external asset of OXT-Beyond (%s). OXT-Beyond\'s' % REPO_URL)
+    add('This archive is an external asset of OpenXTalk-Lite (%s). OpenXTalk-Lite\'s' % REPO_URL)
     add('packager (`tools/oxt/package.py`) adds its files to the installed layout at the')
-    add('same paths, so that OXT-Beyond offers the standalone targets OpenXTalk Lite')
-    add('offers. OXT-Beyond\'s own Windows x86-64 build does not produce these files.')
+    add('same paths, so that OpenXTalk-Lite offers the standalone targets OpenXTalk Lite')
+    add('offers. OpenXTalk-Lite\'s own Windows x86-64 build does not produce these files.')
     add('')
     add('## Source')
     add('')
@@ -339,11 +339,11 @@ def provenance(name, root, infos, empty, stock, stock_setup, source_archive, lef
     add('and built and maintained by Tom Perry (tperry2x) up to 1.15, with contributions')
     add('from Paul McClernan (OpenXTalkPaul) and others (https://openxtalk.org).')
     add('')
-    add('Not included: `Ext/` (the mergExt collection; OXT-Beyond does not redistribute')
+    add('Not included: `Ext/` (the mergExt collection; OpenXTalk-Lite does not redistribute')
     add('it because its licence is unclear) and `Runtime/Windows/x86-32/Support/Sample')
-    add('Icons` (OXT-Beyond installs those from its own `ide/Resources/Sample Icons`).')
+    add('Icons` (OpenXTalk-Lite installs those from its own `ide/Resources/Sample Icons`).')
     if left_out:
-        add('Other files of the release that are not built by OXT-Beyond and are not in')
+        add('Other files of the release that are not built by OpenXTalk-Lite and are not in')
         add('this archive: %d (%s).' % (len(left_out), ', '.join(sorted({layout.group_of(p) for p in left_out}))))
     add('')
     if stock is not None:
@@ -426,7 +426,7 @@ def provenance(name, root, infos, empty, stock, stock_setup, source_archive, lef
     add('  in the history of %s.' % REPO_URL)
     add('- Timezone data (`resources/zoneinfo`): compiled with `zic` from the IANA time')
     add('  zone database, which is in the public domain; the sources are in')
-    add('  `extensions/libraries/timezone/tz` of the LiveCode and OXT-Beyond repositories.')
+    add('  `extensions/libraries/timezone/tz` of the LiveCode and OpenXTalk-Lite repositories.')
     add('- Shared libraries in `Runtime/Linux/*/lib/`: each under the licence of its own')
     add('  project (for example LGPL for glibc, GLib, GTK and Pango; MIT or BSD-style')
     add('  licences for several X11, compression and codec libraries). Their licence texts')
@@ -849,23 +849,23 @@ def builds_provenance(name, version, commit, runs, sources, infos):
         by_from[i['from']].append(i)
     L = []
     add = L.append
-    add('# %s: standalone runtimes for OXT-Beyond' % name)
+    add('# %s: standalone runtimes for OpenXTalk-Lite' % name)
     add('')
-    add('This archive is an external asset of OXT-Beyond (%s). OXT-Beyond\'s' % REPO_URL)
+    add('This archive is an external asset of OpenXTalk-Lite (%s). OpenXTalk-Lite\'s' % REPO_URL)
     add('packager (`tools/oxt/package.py`) adds its files to the installed layout at the')
-    add('same paths, so that every OXT-Beyond package can build standalones for these')
+    add('same paths, so that every OpenXTalk-Lite package can build standalones for these')
     add('platforms, not only for its own. A package leaves out what its own build makes')
     add('(the asset\'s "exclude" in `tools/oxt/external-assets.json`):')
     add('')
     for plat, globs in OWN_PARTS.items():
         add('- `%s`: %s' % (plat, ', '.join('`%s`' % g for g in globs)))
     add('')
-    add('## Built from OXT-Beyond\'s source')
+    add('## Built from OpenXTalk-Lite\'s source')
     add('')
     add('The Windows and Linux runtimes (engines, support libraries, externals, database')
     add('drivers and, where there is one, the browser\'s CEF files), the timezone')
     add('library\'s code for those platforms and its zoneinfo data were built by')
-    add('OXT-Beyond\'s continuous integration and taken from the build outputs by')
+    add('OpenXTalk-Lite\'s continuous integration and taken from the build outputs by')
     add('`tools/oxt/make_runtimes_asset.py --builds`, which installs each one as')
     add('`tools/oxt/package.py` installs a platform\'s own runtime.')
     add('')
@@ -891,7 +891,7 @@ def builds_provenance(name, version, commit, runs, sources, infos):
     carried = by_from[CARRY_ASSET['id']]
     add('## Carried over from %s' % CARRY_ASSET['id'])
     add('')
-    add('OXT-Beyond does not build the Android runtime yet. `Runtime/Android` and the')
+    add('OpenXTalk-Lite does not build the Android runtime yet. `Runtime/Android` and the')
     add('timezone library\'s Android code (`code/*-android`) are taken unchanged from the')
     add('earlier runtimes asset `%s`' % CARRY_ASSET['id'])
     add('(%s, %s bytes,' % (CARRY_ASSET['url'], '{:,}'.format(CARRY_ASSET['size'])))
@@ -911,7 +911,7 @@ def builds_provenance(name, version, commit, runs, sources, infos):
     add('## Corresponding source and licences')
     add('')
     add('- The engines, externals, database drivers and timezone library code built')
-    add('  from OXT-Beyond: GNU GPL v3, with the exception in LICENSE-EXCEPTION.md; the')
+    add('  from OpenXTalk-Lite: GNU GPL v3, with the exception in LICENSE-EXCEPTION.md; the')
     add('  source is %s at the commit above. The third-party' % REPO_URL)
     add('  libraries compiled into them (OpenSSL, curl, ICU, SQLite, the database client')
     add('  libraries and others) are listed with their licences in THIRD-PARTY-NOTICES.md')
@@ -963,10 +963,10 @@ def builds_manifest_entry(name, label, sha, size, commit):
                         'Android runtime with the timezone library\'s Android code, carried over unchanged from '
                         'oxt-runtimes-1.15 (OpenXTalk Lite 1.15). See PROVENANCE.md in the archive.'
                         % ('commit %s' % commit[:12] if commit else 'see PROVENANCE.md')),
-        ('licence', 'GPL-3.0 with the exception in LICENSE-EXCEPTION.md (OXT-Beyond builds); GPL-3.0 '
+        ('licence', 'GPL-3.0 with the exception in LICENSE-EXCEPTION.md (OpenXTalk-Lite builds); GPL-3.0 '
                     '(the Android runtime from LiveCode Community 9.6.3); CEF: BSD-3-Clause with Chromium\'s '
                     'licences; IANA tz data: public domain; see PROVENANCE.md'),
-        ('source', 'OXT-Beyond\'s CI builds win-x86, win-x86_64, linux-x86 and linux-x86_64%s, made with '
+        ('source', 'OpenXTalk-Lite\'s CI builds win-x86, win-x86_64, linux-x86 and linux-x86_64%s, made with '
                    'tools/oxt/make_runtimes_asset.py --builds; the Android parts from oxt-runtimes-1.15'
                    % (' of commit %s' % commit if commit else '')),
     ])

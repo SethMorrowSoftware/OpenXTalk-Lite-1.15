@@ -26,8 +26,8 @@ staged, the build output's binaries and symbols archives, and SHA256SUMS.
 
 --summary is package.py's --summary-json, which gives the platform, the
 stage folder and the build output (a --bin folder or a --bin-tar tarball);
-the options override it. DIR of --stage is the OXT-Beyond-<version> folder.
-Written to --out, where <root> is OXT-Beyond-<version>:
+the options override it. DIR of --stage is the OpenXTalk-Lite-<version> folder.
+Written to --out, where <root> is OpenXTalk-Lite-<version>:
 
   win-x86_64
     <root>-win-x86_64-portable.zip   every staged file under <root>/, then
@@ -45,10 +45,10 @@ Written to --out, where <root> is OXT-Beyond-<version>:
   mac-<arch>
     <root>-mac-<arch>.dmg                with --dmg (macOS only): a disk
                                          image (hdiutil, UDZO, HFS+, volume
-                                         "OXT-Beyond <version>") holding
-                                         OXT-Beyond.app and a link to
+                                         "OpenXTalk-Lite <version>") holding
+                                         OpenXTalk-Lite.app and a link to
                                          /Applications to drag it onto
-    <root>-mac-<arch>.zip                OXT-Beyond.app: on macOS written by
+    <root>-mac-<arch>.zip                OpenXTalk-Lite.app: on macOS written by
                                          "ditto -c -k --sequesterRsrc
                                          --keepParent", elsewhere by this
                                          script as ditto stores it
@@ -561,7 +561,7 @@ def write_package(p, stage, out, levels, hardlinks, log):
             raise
         t.close()
         return t.count
-    # macOS: the app alone, as ditto -c -k --keepParent OXT-Beyond.app does
+    # macOS: the app alone, as ditto -c -k --keepParent OpenXTalk-Lite.app does
     app = os.path.join(stage, p.engine)
     if not os.path.isdir(app):
         raise DistError('%s has no %s' % (stage, p.engine))
@@ -728,7 +728,7 @@ class _Router(object):
 
 
 def add_symbols_tar(r, path):
-    """The debug symbols of a CI symbols tarball (OXT-Beyond-linux-<arch>-
+    """The debug symbols of a CI symbols tarball (OpenXTalk-Lite-linux-<arch>-
     symbols.tar.xz: the build output folder with only its *.dbg files, for
     extracting over the bin tarball; the macOS one holds the *.dSYM
     bundles) into the symbols archive, under the platform's folder name.
@@ -858,14 +858,14 @@ def _member_name(name):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Write the distribution archives of a staged OXT-Beyond layout.')
+    ap = argparse.ArgumentParser(description='Write the distribution archives of a staged OpenXTalk-Lite layout.')
     ap.add_argument('--summary', metavar='FILE', help='package.py --summary-json output')
     ap.add_argument('--platform', choices=list(package.PLATFORMS))
-    ap.add_argument('--stage', metavar='DIR', help='the staged OXT-Beyond-<version> folder')
+    ap.add_argument('--stage', metavar='DIR', help='the staged OpenXTalk-Lite-<version> folder')
     ap.add_argument('--bin', dest='bin_dir', metavar='DIR', help='build output folder')
     ap.add_argument('--bin-tar', metavar='FILE', help='build output as a CI tarball')
     ap.add_argument('--symbols-tar', metavar='FILE',
-                    help='Linux and macOS: the CI\'s debug symbols tarball (OXT-Beyond-<platform>-symbols.tar.xz), '
+                    help='Linux and macOS: the CI\'s debug symbols tarball (OpenXTalk-Lite-<platform>-symbols.tar.xz), '
                          'whose symbols join those of the build output in the symbols archive')
     ap.add_argument('--no-binaries', action='store_true', help='write no binaries or symbols archive')
     ap.add_argument('--out', required=True, help='folder for the archives (created; files of the same '

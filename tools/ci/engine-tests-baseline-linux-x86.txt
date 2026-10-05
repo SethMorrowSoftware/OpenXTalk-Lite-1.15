@@ -4,7 +4,7 @@
 # "<suite>: <test>" per line; "? " before it: fails only sometimes; text
 # after " #" is a comment. Each comes from 32-bit x86 Linux itself (its C
 # library, its compiler's floating point, its type sizes), not from a fault
-# in OXT-Beyond's code.
+# in the code.
 
 # time_t is 32 bits on i386, and glibc 2.31 (Debian 11, the build's floor)
 # has no 64-bit time_t for 32-bit programs (_TIME_BITS=64 came with 2.34),

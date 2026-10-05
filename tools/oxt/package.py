@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-"""Stage the installed layout of OXT-Beyond for one platform.
+"""Stage the installed layout of OpenXTalk-Lite for one platform.
 
   python tools/oxt/package.py [--platform P] --repo <repo>
       (--bin <build output> | --bin-tar <CI build tarball>)
@@ -27,21 +27,21 @@
 
 P chooses the layout (PLATFORMS below; default win-x86_64):
 
-  win-x86_64     OXT-Beyond.exe and everything else in one folder: what the
+  win-x86_64     OpenXTalk-Lite.exe and everything else in one folder: what the
                  portable zip holds and Inno Setup installs. --bin defaults
                  to <repo>/win-x86_64-bin.
-  linux-x86_64   the engine as OXT-Beyond and everything else in one folder:
+  linux-x86_64   the engine as OpenXTalk-Lite and everything else in one folder:
                  what the portable tar.xz holds. --bin defaults to
                  <repo>/linux-x86_64-bin.
   linux-arm64    the same from an arm64 build, for staging only: the IDE has
                  no Linux arm64 standalone target and that build has no CEF,
                  so there is no browser and no Runtime folder of its own.
-  mac-universal  OXT-Beyond.app, with everything the other layouts have at
-                 their root in OXT-Beyond.app/Contents/Tools, from a build
+  mac-universal  OpenXTalk-Lite.app, with everything the other layouts have at
+                 their root in OpenXTalk-Lite.app/Contents/Tools, from a build
                  whose Mach-O files hold arm64 and x86_64 (the lipo merge of
                  the two CI builds). --bin defaults to <repo>/_build/mac/Release.
   mac-arm64, mac-x86_64
-                 OXT-Beyond.app from one architecture's build, to check the
+                 OpenXTalk-Lite.app from one architecture's build, to check the
                  layout; --allow-single-arch lets mac-universal take one too.
   win-x86, linux-x86
                  the 32-bit builds, which are made for their standalone
@@ -51,7 +51,7 @@ P chooses the layout (PLATFORMS below; default win-x86_64):
                  every package installs. They are not packaged themselves.
 
 --bin-tar takes the build output as the tarball a CI build uploads
-(OXT-Beyond-linux-<arch>-bin.tar.xz, OXT-Beyond-mac-<arch>-bin.tar.xz):
+(OpenXTalk-Lite-linux-<arch>-bin.tar.xz, OpenXTalk-Lite-mac-<arch>-bin.tar.xz):
 its one top-level folder is extracted into a temporary folder first,
 without the debug symbols (*.dbg, *.dSYM, *.pdb) and macOS tar's "._"
 AppleDouble files, keeping file modes and symbolic links.
@@ -78,10 +78,10 @@ which keeps neither modes nor symbolic links:
                Extensions/XTALK-EXTENSIONS.txt and the licence files get
                LF line endings; CRLF on Windows.
 
-writes <stage-parent>/OXT-Beyond-<version>/, where <version> is the content
+writes <stage-parent>/OpenXTalk-Lite-<version>/, where <version> is the content
 of ide/.version. An existing folder of that name is replaced. The folder is
 what the platform's package holds (the portable zip and the installer on
-Windows, the tar.xz on Linux; on macOS the folder holds OXT-Beyond.app). It
+Windows, the tar.xz on Linux; on macOS the folder holds OpenXTalk-Lite.app). It
 is put together from (paths relative to the tools folder, which is the
 stage folder itself except on macOS):
 
@@ -94,20 +94,20 @@ stage folder itself except on macOS):
                not depend on git's core.autocrlf.
   build        the files of --bin that Installer/package.txt installs on the
                platform, at its installed paths (see Platform and plan_build);
-               the development engine becomes OXT-Beyond.exe, OXT-Beyond or
-               OXT-Beyond.app. The platform's not_installed list gives the
+               the development engine becomes OpenXTalk-Lite.exe, OpenXTalk-Lite or
+               OpenXTalk-Lite.app. The platform's not_installed list gives the
                build outputs that are left out, and why.
   generated    edition.txt ("community"), Externals/Externals.txt and
                Externals/Database Drivers/Database Drivers.txt (at the root
                and under every runtime folder), .buildnumber (the build
                number), two empty dictionary folders (EMPTY_DIRS) and, on
                macOS, the app's Info.plist (mac_info_plist: the build's,
-               with OXT-Beyond's bundle id, name, version, copyright,
+               with OpenXTalk-Lite's bundle id, name, version, copyright,
                icon and document types, the renamed executable, the
                layout's architectures, arm64 first, and the lowest
                minimum macOS of the engine's slices) and its icon,
-               Contents/Resources/OXT-Beyond.icns (tools/oxt/icns.py,
-               from Installer/oxt-beyond/branding/png).
+               Contents/Resources/OpenXTalk-Lite.icns (tools/oxt/icns.py,
+               from Installer/openxtalk-lite/branding/png).
   licences     LICENSE, LICENSE-EXCEPTION.md and THIRD-PARTY-NOTICES.md from
                the repository root (CRLF line endings on Windows).
   assets       the archives in tools/oxt/external-assets.json (see
@@ -132,7 +132,7 @@ stage folder itself except on macOS):
                load on a PC without the Visual C++ Redistributable. The
                cache is --xtalk-cache, else OXT_XTALK_CACHE, else <asset
                cache>/xtalk.
-  desktop      Linux only: the launcher oxt-beyond, install.sh and
+  desktop      Linux only: the launcher openxtalk-lite, install.sh and
                uninstall.sh (mode 0755) and linux/ with the desktop entry,
                the MIME types, the icons and the library list the launcher
                checks, from Installer/linux and the branding PNGs
@@ -189,11 +189,14 @@ import layout  # noqa: E402
 import fetch_assets  # noqa: E402
 import xtalk_extensions  # noqa: E402
 
-PRODUCT = 'OXT-Beyond'
+PRODUCT = 'OpenXTalk-Lite'
 EDITION = 'community'
 BUILD_NUMBER_ENV = 'OXT_BUILD_NUMBER'
 
-LICENCE_FILES = ('LICENSE', 'LICENSE-EXCEPTION.md', 'THIRD-PARTY-NOTICES.md')
+# LiveCode Community's LICENSE as Tom Perry's tree has it: the GPLv3 with
+# LiveCode Ltd's permission for OpenSSL and ATL at its top. The IDE's own
+# "Open Source Licenses.txt" lists the third-party components.
+LICENCE_FILES = ('LICENSE',)
 
 # Folders that must exist although git cannot store them: the dictionary
 # (Documentation/oxt_dictionary.oxtstack) writes exports into them.
@@ -364,7 +367,7 @@ def _windows(arch):
                        externals=True),),
         not_installed=(
             ('*.pdb', 'debug symbols; they go into the -symbols.zip'),
-            ('installer.exe', 'LiveCode\'s installer engine; OXT-Beyond is installed by Inno Setup'),
+            ('installer.exe', 'LiveCode\'s installer engine; OpenXTalk-Lite is installed by Inno Setup'),
             ('server-*', 'LiveCode Server engine and its externals; package.txt installs no server'),
             ('Externals/CEF/devtools_resources.pak', 'not in package.txt Externals.CEF.Windows'),
             ('Externals/CEF/libbrowser-cefprocess.exe',
@@ -388,7 +391,7 @@ def _linux(arch):
         externals += (('Browser', 'revbrowser.so'),)
     not_installed = (
         ('*.dbg', 'debug symbols (objcopy --only-keep-debug); they go into the -symbols archive'),
-        ('installer', 'LiveCode\'s installer engine; OXT-Beyond ships a portable folder'),
+        ('installer', 'LiveCode\'s installer engine; OpenXTalk-Lite ships a portable folder'),
         ('server-*', 'LiveCode Server engine and its externals; package.txt installs no server'),
         ('Externals/CEF/chrome-sandbox',
          'CEF\'s setuid sandbox helper: CEF runs with no_sandbox (libbrowser_cef.cpp, cefbrowser.cpp), '
@@ -438,20 +441,21 @@ def _linux(arch):
         elf_arch=arch)
 
 
-# The app's identity (mac_info_plist). The bundle id is OXT-Beyond's own,
-# under the project's GitHub account, so that macOS keeps its preferences,
-# document bindings and permissions apart from LiveCode's
-# (com.runrev.livecode) and OpenXTalk Lite's.
-MAC_BUNDLE_ID = 'io.github.sethmorrowsoftware.oxt-beyond'
+# The app's identity (mac_info_plist). The bundle id belongs to this
+# rebuild, under the project's GitHub account, so that macOS keeps its
+# preferences, document bindings and permissions apart from LiveCode's
+# (com.runrev.livecode) and from any other OpenXTalk build.
+MAC_BUNDLE_ID = 'io.github.sethmorrowsoftware.openxtalk-lite'
 MAC_ICON = PRODUCT + '.icns'
-# Installer/oxt-beyond/branding/png/oxt-beyond-<size>.png, made by
-# draw_branding.py; tools/oxt/icns.py takes the sizes it needs
-MAC_ICON_PNGS = 'Installer/oxt-beyond/branding/png'
-# The document types that OXT-Beyond owns: (UTI, extension, name, the
+# Tom Perry's macOS app icon (patches/OpenXTalk-lite_1024.icns in his macOS
+# source trees, which his integrate_openxtalk_icon.sh installed as the app
+# icon), copied unchanged
+MAC_ICON_FILE = 'Installer/openxtalk-lite/branding/OpenXTalk-Lite.icns'
+# The document types the app registers: (UTI, extension, name, the
 # types it conforms to). A script-only stack is plain text, so .oxtscript
 # conforms to public.script (source code, plain text: Quick Look and text
 # editors can show it); a binary stack is data. The names are the
-# installer's (oxt-beyond.iss). No document icon is named: macOS 11 and
+# installer's (openxtalk-lite.iss). No document icon is named: macOS 11 and
 # later draw one from the app icon, and the 10.13 to 10.15 Finder shows
 # its generic document icon.
 MAC_DOCUMENT_TYPES = (
@@ -460,15 +464,13 @@ MAC_DOCUMENT_TYPES = (
 )
 
 
-def mac_copyright(year=None):
-    """NSHumanReadableCopyright: who made what (as about.dat and the
-    installer's AppComments say it), and the licence. LiveCode Ltd's years
-    are those of the engine's own Info.plist."""
-    year = year or datetime.datetime.now(datetime.timezone.utc).year
-    return ('Copyright %s OXT-Beyond contributors. Continues OpenXTalk Lite by Terry Little, Tom Perry and '
-            'the OpenXTalk contributors, based on LiveCode Community, copyright 2000-2020 LiveCode Ltd. '
-            'Free software under the GNU General Public License version 3.'
-            % ('2026' if year <= 2026 else '2026-%d' % year))
+def mac_copyright():
+    """NSHumanReadableCopyright: who made what (as the installer's
+    AppComments say it), and the licence. LiveCode Ltd's years are those of
+    the engine's own Info.plist."""
+    return ('OpenXTalk Lite 1.15 by Terry Little, Tom Perry and the OpenXTalk contributors, '
+            'based on LiveCode Community, copyright 2000-2020 LiveCode Ltd. '
+            'Free software under the GNU General Public License version 3.')
 
 
 def mac_bundle_version(build_number):
@@ -495,7 +497,7 @@ def mac_info_plist(plist, version, build_number, archs, executable, minimum):
 
       CFBundleExecutable      the renamed executable
       CFBundleIdentifier      MAC_BUNDLE_ID (LiveCode's is com.runrev.livecode)
-      CFBundleName,           OXT-Beyond
+      CFBundleName,           OpenXTalk-Lite
       CFBundleDisplayName
       CFBundleShortVersionString
                               ide/.version, as the user sees it
@@ -506,7 +508,7 @@ def mac_info_plist(plist, version, build_number, archs, executable, minimum):
                               time is higher for every build, so that
                               LaunchServices prefers the newer of two
                               copies
-      CFBundleGetInfoString,  OXT-Beyond's version and the engine's
+      CFBundleGetInfoString,  OpenXTalk-Lite's version and the engine's
       CFBundleLongVersionString
       NSHumanReadableCopyright
                               mac_copyright()
@@ -597,29 +599,31 @@ def mac_info_plist(plist, version, build_number, archs, executable, minimum):
 # edition and the engine version, with "." and "-" as "_"), so that a dock
 # shows the running IDE under its menu entry.
 #
-#   oxt-beyond     the launcher: checks the system libraries of
+#   openxtalk-lite     the launcher: checks the system libraries of
 #                  linux/libraries.txt, turns the browser off where CEF
 #                  cannot load (LIVECODE_USE_CEF=0) and starts the engine
 #   install.sh     the per-user install: the program into
-#   uninstall.sh   ~/.local/share/oxt-beyond, the desktop entry, the icons,
-#                  the MIME types and ~/.local/bin/oxt-beyond; and its undo
+#   uninstall.sh   ~/.local/share/openxtalk-lite, the desktop entry, the icons,
+#                  the MIME types and ~/.local/bin/openxtalk-lite; and its undo
 #   linux/         what install.sh installs (the desktop entry's Exec and
 #                  TryExec become the launcher's absolute path) and the
 #                  library list; the icons are the branding PNGs, in the
 #                  sizes of install.sh's icon_sizes
 #
-# The engine keeps its name OXT-Beyond: the IDE and the engine find the
+# The engine keeps its name OpenXTalk-Lite: the IDE and the engine find the
 # tools folder from the engine's own path (/proc/self/exe), which exec
 # keeps, and the CEF helper libbrowser-cefprocess next to it.
+# Installer/openxtalk-lite/branding/png was made from Tom Perry's Windows
+# icon, ide/OpenXTalk-lite_1024.ico (see ico_to_png.py there)
 LINUX_ICON_SIZES = (16, 24, 32, 48, 64, 128, 256, 512)
 LINUX_DESKTOP = (
-    ('Installer/linux/oxt-beyond', 'oxt-beyond', True, 'text'),
+    ('Installer/linux/openxtalk-lite', 'openxtalk-lite', True, 'text'),
     ('Installer/linux/install.sh', 'install.sh', True, 'text'),
     ('Installer/linux/uninstall.sh', 'uninstall.sh', True, 'text'),
     ('Installer/linux/libraries.txt', 'linux/libraries.txt', False, 'text'),
-    ('Installer/linux/oxt-beyond.desktop', 'linux/oxt-beyond.desktop', False, 'desktop'),
-    ('Installer/linux/oxt-beyond.xml', 'linux/oxt-beyond.xml', False, 'text'),
-) + tuple(('Installer/oxt-beyond/branding/png/oxt-beyond-%d.png' % n, 'linux/icons/oxt-beyond-%d.png' % n,
+    ('Installer/linux/openxtalk-lite.desktop', 'linux/openxtalk-lite.desktop', False, 'desktop'),
+    ('Installer/linux/openxtalk-lite.xml', 'linux/openxtalk-lite.xml', False, 'text'),
+) + tuple(('Installer/openxtalk-lite/branding/png/openxtalk-lite-%d.png' % n, 'linux/icons/openxtalk-lite-%d.png' % n,
            False, 'binary') for n in LINUX_ICON_SIZES)
 
 
@@ -709,7 +713,7 @@ MAC_RUNTIMES = collections.OrderedDict([
 
 def _mac(arch):
     """package.txt TargetPlatform MacOSX, with the IDE under
-    OXT-Beyond.app/Contents/Tools. arch 'universal' is the release layout;
+    OpenXTalk-Lite.app/Contents/Tools. arch 'universal' is the release layout;
     'arm64' and 'x86_64' stage one architecture's build, with only its own
     runtime folders (arm64: x64-ARM64 and its arm64 Externals; see
     MAC_RUNTIMES) and x86-32, whose Standalone.app the IDE needs for the
@@ -751,7 +755,7 @@ def _mac(arch):
         #      Standalone*.app bundles and their Support and Externals
         #      folders, Externals, Toolchain;
         #   2. Contents/MacOS/revsecurity.dylib and revpdfprinter.bundle;
-        #   3. the app itself, which signs Contents/MacOS/OXT-Beyond.
+        #   3. the app itself, which signs Contents/MacOS/OpenXTalk-Lite.
         # Apple Silicon kills a process at the first page that does not
         # match its hash (loading revsecurity for an https URL would end in
         # "Code Signature Invalid"). GitHub's macOS runners (SIP disabled)
@@ -765,14 +769,14 @@ def _mac(arch):
         runtimes=tuple(MAC_RUNTIMES[f] for f in folders),
         not_installed=(
             ('*.dSYM/**', 'debug symbols; they go into the -symbols zip'),
-            ('Installer.app/**', 'LiveCode\'s installer; OXT-Beyond ships the app in a disk image'),
+            ('Installer.app/**', 'LiveCode\'s installer; OpenXTalk-Lite ships the app in a disk image'),
             ('installer-stub', 'LiveCode\'s installer'),
             ('server-*', 'LiveCode Server engine and its externals; package.txt installs no server'),
             ('reviphoneproxy', 'iOS simulator helper; the copy inside reviphone.bundle is installed'),
             ('tz.dylib', 'native code of the timezone library; its packaged_extensions copy is installed'),
             ('inih.dylib', 'native code of com.livecode.library.ini, which package.txt does not install'),
             ('LiveCode-Community.app/Contents/Info.plist',
-             'replaced by OXT-Beyond\'s Info.plist (mac_info_plist: bundle id, version, icon, document types, '
+             'replaced by OpenXTalk-Lite\'s Info.plist (mac_info_plist: bundle id, version, icon, document types, '
              'the renamed executable, the layout\'s architectures and the engine\'s lowest macOS)'),
             ('LiveCode-Community.app/Contents/_CodeSignature/**',
              'the build\'s seal of the app does not match the renamed executable and the new Info.plist; '
@@ -1058,24 +1062,23 @@ def plan_engine(pl):
                                    new.rsplit('/', 1)[-1],
                                    binfmt.version_text(min(floors)) if None not in floors else None)
             pl.generated(p.engine + '/Contents/Info.plist', plistlib.dumps(plist, fmt=plistlib.FMT_XML),
-                         'OXT-Beyond\'s Info.plist (mac_info_plist): %s %s, CFBundleExecutable %s, '
+                         'OpenXTalk-Lite\'s Info.plist (mac_info_plist): %s %s, CFBundleExecutable %s, '
                          'LSArchitecturePriority %s, LSMinimumSystemVersion %s'
                          % (plist['CFBundleIdentifier'], plist['CFBundleVersion'], plist['CFBundleExecutable'],
                             ', '.join(plist['LSArchitecturePriority']), plist.get('LSMinimumSystemVersion', '?')))
-        # The app icon, from the branding PNGs (tools/oxt/icns.py, so that
-        # no macOS tool is needed; imported here, as only the macOS
-        # layouts use it)
-        import icns
-        pngs = layout.native(pl.repo, MAC_ICON_PNGS)
+        # The app icon: Tom Perry's .icns, byte for byte
+        icon = layout.native(pl.repo, MAC_ICON_FILE)
         try:
-            names = sorted(n for n in os.listdir(pngs) if n.lower().endswith('.png'))
-            data = icns.build_from_files([os.path.join(pngs, n) for n in names])
-        except (OSError, icns.IcnsError) as e:
-            pl.problems.append('cannot make %s from %s: %s' % (MAC_ICON, pngs, e))
+            with open(icon, 'rb') as f:
+                data = f.read()
+        except OSError as e:
+            pl.problems.append('cannot read %s: %s' % (MAC_ICON_FILE, e))
         else:
-            pl.generated(p.engine + '/Contents/Resources/' + MAC_ICON, data,
-                         'the app icon (CFBundleIconFile), made from %s/*.png by tools/oxt/icns.py'
-                         % MAC_ICON_PNGS)
+            if data[:4] != b'icns':
+                pl.problems.append('%s is not an .icns file' % MAC_ICON_FILE)
+            else:
+                pl.generated(p.engine + '/Contents/Resources/' + MAC_ICON, data,
+                             'the app icon (CFBundleIconFile), %s' % MAC_ICON_FILE)
     for rel, target in p.engine_support:
         pl.output(target, rel, note)
 
@@ -1653,7 +1656,7 @@ def compare(stage, items, ref, no_assets, report=None, no_xtalk=False, platform=
             counts[('(staged only)', 'class not in the list')] += 1
             continue
         if it.origin == 'licence':
-            status, why = 'intended addition', 'OXT-Beyond licence file'
+            status, why = 'intended addition', 'OpenXTalk-Lite licence file'
         elif it.origin == 'asset' and _asset_rel(it) in it.asset.get('rename', {}):
             status, why = 'intended addition', 'notice file of an external asset (%s)' % it.note
         elif it.origin == 'asset' and rebuilt and it.target.startswith(REBUILT_RUNTIMES + ('PROVENANCE-',)):
@@ -1825,7 +1828,7 @@ def summarise_xtalk(xtalk, log):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description='Stage the installed layout of OXT-Beyond for one platform.')
+    p = argparse.ArgumentParser(description='Stage the installed layout of OpenXTalk-Lite for one platform.')
     p.add_argument('--platform', choices=list(PLATFORMS), default=DEFAULT_PLATFORM,
                    help='layout to stage (default: %(default)s)')
     p.add_argument('--repo', default=os.path.dirname(os.path.dirname(HERE)),
@@ -1833,8 +1836,8 @@ def main(argv=None):
     p.add_argument('--bin', dest='bin_dir',
                    help='build output (default: the platform\'s, e.g. <repo>/win-x86_64-bin)')
     p.add_argument('--bin-tar', metavar='FILE',
-                   help='build output as a CI tarball (OXT-Beyond-<platform>-bin.tar.xz), instead of --bin')
-    p.add_argument('--out', required=True, help='folder to create OXT-Beyond-<version> in')
+                   help='build output as a CI tarball (OpenXTalk-Lite-<platform>-bin.tar.xz), instead of --bin')
+    p.add_argument('--out', required=True, help='folder to create OpenXTalk-Lite-<version> in')
     p.add_argument('--build-number', help='default: $%s, else the UTC time as YYYYMMDDHHMM' % BUILD_NUMBER_ENV)
     p.add_argument('--assets-cache', metavar='DIR',
                    help='asset cache (default: $%s, else <repo>/prebuilt/fetched-assets)' % fetch_assets.CACHE_ENV)

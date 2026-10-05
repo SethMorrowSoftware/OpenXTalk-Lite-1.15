@@ -68,7 +68,7 @@ from this repository. This tool gives every installed path one class:
   excluded  (e) shipped by OXT Lite but not redistributed by this project
                 because of their licences (see NOT_REDISTRIBUTABLE): never
                 imported, and removed from the repository by import.
-  xtalk     (f) the xTalk Suite extensions OXT-Beyond ships built in
+  xtalk     (f) the xTalk Suite extensions OpenXTalk-Lite ships built in
                 (Extensions/<folder> for every folder in
                 xtalk-extensions.json, and Extensions/XTALK-EXTENSIONS.txt):
                 built by tools/oxt/xtalk_extensions.py from their own
@@ -224,16 +224,12 @@ XTALK_EXTENSIONS = _xtalk_extensions()
 # Root files of the install that are IDE content, kept at the root of ide/.
 ROOT_IDE_FILES = (
     ('.buildnumber', 'OXT build number, read by the updater'),
-    ('.codename', 'OXT-Beyond release name, read by the splash screen, the '
-     'About window and the release workflow'),
     ('.version', 'OXT version, read by the IDE (revmenubar) and the updater'),
     ('about.dat', 'OXT About text (replaces about.txt)'),
     ('about.txt', 'package.txt Misc: textfile ide:about.txt'),
     ('License Agreement.txt', 'package.txt Misc: textfile ide:License Agreement.txt'),
     ('Open Source Licenses.txt', 'package.txt Misc: textfile ide:Open Source Licenses.txt'),
     ('OpenXTalk-lite_1024.ico', 'OXT application icon'),
-    ('OXT-Beyond.ico', 'OXT-Beyond application icon (adapted from '
-     'OpenXTalk-lite_1024.ico); not in OXT Lite installs'),
     ('Release Notes.pdf', 'OXT Lite 1.07 and earlier ship their own release '
      'notes (Terry Little); upstream generates the file from '
      'repo:LiveCodeNotes-<version>.pdf'),
@@ -334,10 +330,6 @@ def _rules():
              'zero-byte file that no script refers to; the dictionary '
              'database is Documentation/html_viewer/resources/data/api/'
              'api.sqlite'))
-    add(Rule('Toolset/palettes/standalone settings/mac-arm-deploy.oxtstack', JUNK, None,
-             'macOS ARM standalone builder that nothing opens: its button '
-             'calls "_internal build MacARM", which this engine does not '
-             'have (removed from ide/ in 0.2.1)'))
     add(Rule('Toolset/**', IDE, 'ide/Toolset/', 'package.txt Toolset: rfolder ide:Toolset'))
 
     # --- Not redistributed (before the folder rules that would take them) --
@@ -434,7 +426,7 @@ UPSTREAM_DIFFERENCES = (
 # stores them (ide/.gitattributes and the root .gitattributes, plus
 # auto-detection): as text with LF line endings.
 TEXT_EXTENSIONS = frozenset((
-    '.buildnumber', '.codename', '.css', '.csv', '.dat', '.htm', '.html', '.js', '.json',
+    '.buildnumber', '.css', '.csv', '.dat', '.htm', '.html', '.js', '.json',
     '.lc', '.lcb', '.lcdoc', '.lci', '.livecodescript', '.map', '.md',
     '.mlc', '.snippet', '.svg', '.template', '.tsv', '.txt', '.version',
     '.xml', '.yaml', '.yml',

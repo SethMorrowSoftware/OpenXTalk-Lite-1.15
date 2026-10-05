@@ -1,6 +1,6 @@
 {
   "comment": [
-    "The xTalk Suite extensions that OXT-Beyond ships built in, consumed from",
+    "The xTalk Suite extensions that OpenXTalk-Lite ships built in, consumed from",
     "the member repositories at pinned commits (nothing of them is kept in this",
     "repository). tools/oxt/xtalk_extensions.py reads this file: 'pin' resolves",
     "a member's commit and rewrites its commit, version and every file's",

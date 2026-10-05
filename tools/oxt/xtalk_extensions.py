@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-"""Pin, fetch and build the xTalk Suite extensions that OXT-Beyond ships
+"""Pin, fetch and build the xTalk Suite extensions that OpenXTalk-Lite ships
 built in (tools/oxt/xtalk-extensions.json).
 
 The extensions are consumed from their member repositories
@@ -85,7 +85,7 @@ before they are moved into place).
 The Visual C++ runtime. enetxt.dll and box2dxt.dll are built with the
 dynamic CRT and import MSVCP140 / VCRUNTIME140 / VCRUNTIME140_1, which
 Windows does not have without the Visual C++ Redistributable and which the
-OXT-Beyond engine (static CRT) does not ship. With --vc-redist (Visual
+OpenXTalk-Lite engine (static CRT) does not ship. With --vc-redist (Visual
 Studio's redistributable folder, VCToolsRedistDir, which has
 x64\\Microsoft.VC14x.CRT and x86\\Microsoft.VC14x.CRT) build copies every
 DLL that a library in code/x86_64-win32 or code/x86-win32 imports and that
@@ -178,8 +178,8 @@ HTTP_TIMEOUT = 60
 # of the library moves (script-level declarations resolve by position) and
 # its line numbers stay those of the member repository.
 LCS_WRAPPER = '''
--- OXT-Beyond: added when this library was bundled as an extension (see
--- tools/oxt/xtalk_extensions.py in the OXT-Beyond repository). The IDE
+-- OpenXTalk-Lite: added when this library was bundled as an extension (see
+-- tools/oxt/xtalk_extensions.py in the OpenXTalk-Lite repository). The IDE
 -- sends extensionInitialize to a script library extension when it loads it
 -- and extensionFinalize when it unloads it.
 on extensionInitialize
@@ -1592,12 +1592,12 @@ def _write_vc_runtime_notice(folder, copies, redist_version, log):
     width = max(len(path) for path, _ in copies)
     lines = ['Microsoft Visual C++ runtime', '============================', '']
     lines += para('The Windows libraries of this extension are built with the dynamic Visual C++ runtime, so '
-                  'OXT-Beyond ships these Microsoft files next to them:') + ['']
+                  'OpenXTalk-Lite ships these Microsoft files next to them:') + ['']
     lines += ['  %s  (file version %s)' % (path.ljust(width), v) for path, v in copies] + ['']
     lines += para('Copyright (c) Microsoft Corporation. Microsoft Visual C++ runtime, copied unmodified from '
                   '%s.' % source) + ['']
     lines += para('These files are Microsoft Distributable Code. They are covered neither by this extension\'s '
-                  'licence (the other files in this folder) nor by OXT-Beyond\'s licence (the GNU General Public '
+                  'licence (the other files in this folder) nor by OpenXTalk-Lite\'s licence (the GNU General Public '
                   'License version 3). They are distributed under %s This file summarises some of those terms; '
                   'it does not reproduce them. Read them.' % under) + ['']
     lines += para('Anyone who distributes these files further, including in a standalone application (the '
@@ -1623,10 +1623,10 @@ def _write_vc_runtime_notice(folder, copies, redist_version, log):
 def _write_stamp(path, built, redist, runtime_copies, missing_runtime, stale_runtime, platforms,
                  pinned_version=None):
     lines = [
-        '# xTalk Suite extensions bundled with OXT-Beyond',
+        '# xTalk Suite extensions bundled with OpenXTalk-Lite',
         '#',
         '# Built by tools/oxt/xtalk_extensions.py from tools/oxt/xtalk-extensions.json',
-        '# in the OXT-Beyond repository. Each extension comes unchanged from its',
+        '# in the OpenXTalk-Lite repository. Each extension comes unchanged from its',
         '# repository at the commit below (script libraries get a script header if',
         '# they have none and an extensionInitialize/extensionFinalize pair; LCB',
         '# libraries are compiled with this release\'s lc-compile). The licence',
@@ -1792,7 +1792,7 @@ def cmd_pin_vc_runtime(args, log=print):
 # hold), so the zip depends only on the pinned files, not on when they
 # were downloaded
 EXPORT_DATE = (1980, 1, 1, 0, 0, 0)
-EXPORT_README = '''xTalk Suite extension sources of an OXT-Beyond release
+EXPORT_README = '''xTalk Suite extension sources of an OpenXTalk-Lite release
 =====================================================
 
 Every file that tools/oxt/xtalk-extensions.json (the copy in this zip)

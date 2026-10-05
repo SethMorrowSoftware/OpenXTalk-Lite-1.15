@@ -16,7 +16,7 @@
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
 """Check that the native libraries of the extensions in an installed
-OXT-Beyond layout find the libraries they need: the Linux (ELF) and macOS
+OpenXTalk-Lite layout find the libraries they need: the Linux (ELF) and macOS
 (Mach-O) counterpart of check-extension-imports.ps1, which it also covers
 for Windows (PE), so one tool checks every platform's code folders.
 
@@ -25,7 +25,7 @@ for Windows (PE), so one tool checks every platform's code folders.
       [--json FILE] [--quiet]
 
 <tools folder> is the folder with Extensions (the layout root; on macOS
-OXT-Beyond.app/Contents/Tools). Every library in
+OpenXTalk-Lite.app/Contents/Tools). Every library in
 Extensions/<extension>/code/<platform id>/ of the chosen platforms (default:
 this machine's) is read, and each library it needs must be
 
@@ -330,7 +330,7 @@ def _version(text):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Check the native dependencies of the extension libraries '
-                                             'in an installed OXT-Beyond layout.')
+                                             'in an installed OpenXTalk-Lite layout.')
     ap.add_argument('--root', required=True, help='the tools folder (with Extensions)')
     ap.add_argument('--platform', choices=FAMILIES + ('all',),
                     help='code folders to check (default: this machine\'s platform)')

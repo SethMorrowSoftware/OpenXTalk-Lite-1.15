@@ -16,9 +16,9 @@
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
 """Check the system libraries of an extracted or staged Linux package of
-OXT-Beyond against the list its launcher checks, and against this machine.
+OpenXTalk-Lite against the list its launcher checks, and against this machine.
 
-  python tools/ci/check_linux_libraries.py --root <OXT-Beyond-<version> folder>
+  python tools/ci/check_linux_libraries.py --root <OpenXTalk-Lite-<version> folder>
       [--libraries FILE] [--repo DIR] [--no-ldd] [--json FILE]
 
 --libraries is the list the launcher reads (default
@@ -220,8 +220,8 @@ def run_ldd(path):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Check the system libraries of a Linux OXT-Beyond package.')
-    ap.add_argument('--root', required=True, help='the package folder (OXT-Beyond-<version>)')
+    ap = argparse.ArgumentParser(description='Check the system libraries of a Linux OpenXTalk-Lite package.')
+    ap.add_argument('--root', required=True, help='the package folder (OpenXTalk-Lite-<version>)')
     ap.add_argument('--libraries', help='the launcher\'s list (default: <root>/linux/libraries.txt)')
     ap.add_argument('--repo', help='repository root: also check the libraries the engine loads with dlopen')
     ap.add_argument('--no-ldd', action='store_true', help='do not run ldd')

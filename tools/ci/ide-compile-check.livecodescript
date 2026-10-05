@@ -1,10 +1,10 @@
 script "oxt_ide_compile_check"
--- Headless compile check of the IDE scripts in an installed OXT-Beyond
+-- Headless compile check of the IDE scripts in an installed OpenXTalk-Lite
 -- layout (the folder with Toolset, Plugins and Extensions).
 --
 -- Run it with the development engine, without the IDE:
 --
---    OXT-Beyond.exe -ui tools\ci\ide-compile-check.livecodescript
+--    OpenXTalk-Lite.exe -ui tools\ci\ide-compile-check.livecodescript
 --
 -- tools/ci/ide-compile-check.ps1 does this, compares the errors with
 -- tools/ci/ide-compile-baseline.txt and decides whether the check passed.

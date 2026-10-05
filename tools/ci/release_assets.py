@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-"""Put the files of one OXT-Beyond release together from the packages of
+"""Put the files of one OpenXTalk-Lite release together from the packages of
 the three platforms, and check them before and after they are uploaded.
 
   python3 tools/ci/release_assets.py assemble --version V --artifacts DIR --out DIR
@@ -26,9 +26,9 @@ The release workflow (.github/workflows/release.yml) downloads the CI
 artifacts that hold the packages, each into a folder of its own named
 after it, as actions/download-artifact writes a named artifact:
 
-  OXT-Beyond-win-x86_64     build-windows.yml, job "Build win-x86_64"
-  OXT-Beyond-mac-universal  build-macos.yml, job "Package mac-universal"
-  OXT-Beyond-linux-x86_64   build-linux.yml, job "Package linux-x86_64"
+  OpenXTalk-Lite-win-x86_64     build-windows.yml, job "Build win-x86_64"
+  OpenXTalk-Lite-mac-universal  build-macos.yml, job "Package mac-universal"
+  OpenXTalk-Lite-linux-x86_64   build-linux.yml, job "Package linux-x86_64"
 
 assemble checks each artifact folder of --artifacts:
 
@@ -36,7 +36,7 @@ assemble checks each artifact folder of --artifacts:
     file matches its line (a file that changed or went missing between
     packaging and the release fails here, not on a user's computer);
   - it holds exactly the files ASSETS names for it, where <root> is
-    OXT-Beyond-<version>: none missing, and none that the table does not
+    OpenXTalk-Lite-<version>: none missing, and none that the table does not
     name (a new kind of file is added to the table on purpose, together
     with its description in tools/ci/release_notes.py);
 
@@ -76,7 +76,7 @@ import re
 import shutil
 import sys
 
-PRODUCT = 'OXT-Beyond'
+PRODUCT = 'OpenXTalk-Lite'
 SUMS = 'SHA256SUMS'
 
 # The version rule of ide/.version, as the build workflows check it
@@ -86,7 +86,7 @@ VERSION_RE = re.compile(r'^[0-9]+(\.[0-9]+){1,3}(-[0-9A-Za-z][0-9A-Za-z.-]*)?$')
 # (artifact, platform, the files after "<root>" in their names). Linux arm64
 # is built but not packaged, so it has no artifact here.
 ASSETS = (
-    ('OXT-Beyond-win-x86_64', 'win-x86_64', (
+    ('OpenXTalk-Lite-win-x86_64', 'win-x86_64', (
         '-win-x86_64-setup.exe',
         '-win-x86_64-portable.zip',
         '-win-x86_64-binaries.zip',
@@ -96,13 +96,13 @@ ASSETS = (
         # (package-windows.ps1 -XtalkSourcesZip) and no other job does
         '-xtalk-sources.zip',
     )),
-    ('OXT-Beyond-mac-universal', 'mac-universal', (
+    ('OpenXTalk-Lite-mac-universal', 'mac-universal', (
         '-mac-universal.dmg',
         '-mac-universal.zip',
         '-mac-universal-binaries.tar.xz',
         '-mac-universal-symbols.zip',
     )),
-    ('OXT-Beyond-linux-x86_64', 'linux-x86_64', (
+    ('OpenXTalk-Lite-linux-x86_64', 'linux-x86_64', (
         '-linux-x86_64.tar.xz',
         '-linux-x86_64-binaries.tar.xz',
         '-linux-x86_64-symbols.tar.xz',

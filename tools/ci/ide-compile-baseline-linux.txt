@@ -2,10 +2,10 @@
 # format of ide-compile-baseline.txt. tools/ci/run_livecode_check.py adds
 # them to the shared baseline when it checks on Linux.
 #
-# None at present. Plugins/Quick Dictionary.livecode was listed here while
-# the Linux engine crashed (SIGSEGV) loading it without a user interface
-# (-ui): its main stack's textFont is "(System)", which
+# Without a user interface (-ui) the Linux engine crashes (SIGSEGV) loading
+# this plugin: its main stack's textFont is "(System)", which
 # MCNewFontlist::getfont (engine/src/lnxflst.cpp) resolves through the GTK
-# theme, and without a screen the theme gave no family name. Setting the
-# textFont of any stack to "(System)" did the same. The engine now falls
-# back to its default family there.
+# theme, and without a screen the theme gives no family name, which the
+# engine then dereferences. OXT-Beyond fixed this in its commit 7ae0d8f0f;
+# here the engine is kept as it is.
+Plugins/Quick Dictionary.livecode | (file) | line 0 | the engine crashed while checking it

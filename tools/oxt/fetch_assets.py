@@ -19,10 +19,10 @@
 the installed layout (tools/oxt/external-assets.json).
 
 External assets are files that packaging takes from a published archive
-rather than from the build: the standalone runtimes for other platforms
-(made from this repository's CI builds by make_runtimes_asset.py
---builds, with OpenXTalk Lite 1.15's Android runtime). Each asset is one
-archive with a fixed URL, size and SHA-256:
+rather than from the build: the standalone runtimes for other platforms,
+taken unchanged from OpenXTalk Lite 1.15 (oxt-runtimes-1.15, made by
+make_runtimes_asset.py from Tom Perry's Windows release). Each asset is
+one archive with a fixed URL, size and SHA-256:
 
   {
     "id":          unique name, used in messages and reports
@@ -93,7 +93,7 @@ KINDS = ('zip',)
 
 ATTEMPTS = 4
 TIMEOUT = 60
-USER_AGENT = 'OXT-Beyond-packager (+https://github.com/SethMorrowSoftware/OpenXTalk-Beyond)'
+USER_AGENT = 'OpenXTalk-Lite-packager (+https://github.com/SethMorrowSoftware/OpenXTalk-Lite-1.15)'
 
 
 class AssetError(Exception):

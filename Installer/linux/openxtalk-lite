@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-# Starts OXT-Beyond on Linux: the engine OXT-Beyond in the same folder, with
-# the arguments given ("oxt-beyond my.oxtstack" opens a stack; the desktop
+# Starts OpenXTalk-Lite on Linux: the engine OpenXTalk-Lite in the same folder, with
+# the arguments given ("openxtalk-lite my.oxtstack" opens a stack; the desktop
 # entry passes the file it is asked to open).
 #
 # Before that it checks the system libraries listed in linux/libraries.txt
@@ -37,7 +37,7 @@
 # the architecture's standard library folders: where dlopen finds it.
 #
 # POSIX sh only (dash, bash, busybox sh), no readlink -f: install.sh links
-# ~/.local/bin/oxt-beyond to this file, and the engine is found next to the
+# ~/.local/bin/openxtalk-lite to this file, and the engine is found next to the
 # file itself, not next to the link.
 
 set -f
@@ -55,7 +55,7 @@ hops=0
 while [ -L "$self" ]; do
     hops=$((hops + 1))
     if [ "$hops" -gt 40 ] || ! link=$(readlink "$self"); then
-        printf 'oxt-beyond: cannot follow the symbolic link %s\n' "$self" >&2
+        printf 'openxtalk-lite: cannot follow the symbolic link %s\n' "$self" >&2
         exit 1
     fi
     case $link in
@@ -66,7 +66,7 @@ done
 dir=${self%/*}
 [ -n "$dir" ] || dir=/
 here=$(cd -P -- "$dir" && pwd -P) || exit 1
-engine=$here/OXT-Beyond
+engine=$here/OpenXTalk-Lite
 
 # A message on the terminal, and in a dialog when there is no terminal to
 # show it (started from the application menu). zenity reads --text as Pango
@@ -81,10 +81,10 @@ tell() {
     [ -t 2 ] && return 0
     [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || return 0
     if command -v zenity >/dev/null 2>&1; then
-        zenity --error --no-markup --no-wrap --title=OXT-Beyond --text="$1" >/dev/null 2>&1 && return 0
+        zenity --error --no-markup --no-wrap --title=OpenXTalk-Lite --text="$1" >/dev/null 2>&1 && return 0
     fi
     if command -v kdialog >/dev/null 2>&1; then
-        kdialog --title OXT-Beyond --error "$1" >/dev/null 2>&1 && return 0
+        kdialog --title OpenXTalk-Lite --error "$1" >/dev/null 2>&1 && return 0
     fi
     if command -v xmessage >/dev/null 2>&1; then
         printf '%s\n' "$1" | xmessage -center -file - >/dev/null 2>&1
@@ -93,17 +93,17 @@ tell() {
 }
 
 if [ ! -f "$engine" ] || [ ! -x "$engine" ]; then
-    tell "OXT-Beyond: the engine $engine is missing or not executable. Extract the whole package (tar -xJf OXT-Beyond-<version>-linux-x86_64.tar.xz) and start oxt-beyond from its folder."
+    tell "OpenXTalk-Lite: the engine $engine is missing or not executable. Extract the whole package (tar -xJf OpenXTalk-Lite-<version>-linux-x86_64.tar.xz) and start openxtalk-lite from its folder."
     exit 1
 fi
-# The engine OXT-Beyond and this launcher oxt-beyond differ only in case. On
+# The engine OpenXTalk-Lite and this launcher openxtalk-lite differ only in case. On
 # a file system that does not tell the two apart, tar writes the launcher
 # (listed after the engine) over the engine, and $engine is then this very
 # file: exec would start the launcher again and again, silently, for ever.
 # ($self is this file with its links followed. A test without -ef returns
 # false, and the launcher goes on as before.)
 if [ "$engine" -ef "$self" ]; then
-    tell "OXT-Beyond: $engine is this launcher, not the engine: the folder $here does not tell upper from lower case (FAT, exFAT or a Windows drive), so extracting the package there replaced the engine OXT-Beyond with the launcher oxt-beyond. Extract it onto a Linux file system (ext4, Btrfs, XFS)."
+    tell "OpenXTalk-Lite: $engine is this launcher, not the engine: the folder $here does not tell upper from lower case (FAT, exFAT or a Windows drive), so extracting the package there replaced the engine OpenXTalk-Lite with the launcher openxtalk-lite. Extract it onto a Linux file system (ext4, Btrfs, XFS)."
     exit 1
 fi
 
@@ -113,7 +113,7 @@ fi
 lower=$(printf '%s' "$here" | tr '[:upper:]' '[:lower:]')
 case $lower/ in
     */_build/*|*/linux-bin/*|*/linux-x86_64-bin/*|*/linux-arm64-bin/*|*/build-linux-x86_64/*|*/build-linux-arm64/*)
-        printf 'oxt-beyond: warning: %s has a folder name that makes the engine look for a source checkout above it (repository mode); move the program to another folder\n' "$here" >&2 ;;
+        printf 'openxtalk-lite: warning: %s has a folder name that makes the engine look for a source checkout above it (repository mode); move the program to another folder\n' "$here" >&2 ;;
 esac
 
 headless=0
@@ -191,7 +191,7 @@ if [ "${OXT_BEYOND_SKIP_LIBRARY_CHECK:-}" != 1 ]; then
             fi
         done < "$list"
     else
-        printf 'oxt-beyond: %s is missing; the system libraries are not checked\n' "$list" >&2
+        printf 'openxtalk-lite: %s is missing; the system libraries are not checked\n' "$list" >&2
     fi
 
     # The sonames of lines "soname<tab>deb<tab>rpm", and how to install
@@ -226,7 +226,7 @@ EOF
     }
 
     if [ -n "$missing" ]; then
-        tell "OXT-Beyond cannot start: these libraries are missing:$nl$(explain "$missing")${nl}To start it anyway, set OXT_BEYOND_SKIP_LIBRARY_CHECK=1."
+        tell "OpenXTalk-Lite cannot start: these libraries are missing:$nl$(explain "$missing")${nl}To start it anyway, set OXT_BEYOND_SKIP_LIBRARY_CHECK=1."
         exit 127
     fi
 fi
@@ -240,7 +240,7 @@ if [ -z "${LIVECODE_USE_CEF+set}" ]; then
     elif [ -n "${missing_browser:-}" ]; then
         LIVECODE_USE_CEF=0
         export LIVECODE_USE_CEF
-        printf 'oxt-beyond: the browser widget is turned off (LIVECODE_USE_CEF=0): the browser (CEF) needs these libraries:\n%s\n' "$(explain "$missing_browser")" >&2
+        printf 'openxtalk-lite: the browser widget is turned off (LIVECODE_USE_CEF=0): the browser (CEF) needs these libraries:\n%s\n' "$(explain "$missing_browser")" >&2
     fi
 fi
 

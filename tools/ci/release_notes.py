@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-"""Write the release notes of an OXT-Beyond release for Windows, macOS and
+"""Write the release notes of an OpenXTalk-Lite release for Windows, macOS and
 Linux (Markdown, for gh release create --notes-file).
 
   python3 tools/ci/release_notes.py --version V [--commit SHA]
@@ -80,7 +80,7 @@ LINUX_MIN = 'Linux x86-64 (glibc 2.31 or later)'
 # 0.1.0, which leaves room for a pre-release part. Plain text: see the
 # module comment.
 INTRO = '''\
-OXT-Beyond {version} for Windows, macOS and Linux.{pre}
+OpenXTalk-Lite {version} for Windows, macOS and Linux.{pre}
 
 Download from the release page, under Assets:
 - {windows_min}: {root}-win-x86_64-setup.exe
@@ -100,7 +100,7 @@ BODY = '''\
 Needs 64-bit Windows 10 or later.
 
 - `{root}-win-x86_64-setup.exe`: the installer. It installs for all users or only for you, and adds a Start menu shortcut and the .oxtstack and .oxtscript file types.
-- `{root}-win-x86_64-portable.zip`: the same program folder without an installer. Extract it and run `OXT-Beyond.exe`.
+- `{root}-win-x86_64-portable.zip`: the same program folder without an installer. Extract it and run `OpenXTalk-Lite.exe`.
 - `{root}-win-x86_64-binaries.zip`: the engine, externals and tools as built (`win-x86_64-bin`), without debug symbols, plus the licence files.
 - `{root}-win-x86_64-symbols.zip`: debug symbols (`*.pdb`) for the binaries.
 
@@ -108,23 +108,23 @@ The executables are not code-signed, so Windows SmartScreen may warn when they a
 
 ## macOS (Apple Silicon and Intel)
 
-One universal app, `OXT-Beyond.app`. It needs macOS 11 Big Sur or later on Apple Silicon, or macOS 10.13 High Sierra or later on an Intel Mac. The native libraries of the bundled xTalk Suite extensions SodiumXT, TorrentXT, enetxt, DataChannelXT, Box2Dxt and CoinXT need macOS 15 Sequoia or later: on older macOS the IDE starts, but those extensions do not load.
+One universal app, `OpenXTalk-Lite.app`. It needs macOS 11 Big Sur or later on Apple Silicon, or macOS 10.13 High Sierra or later on an Intel Mac. The native libraries of the bundled xTalk Suite extensions SodiumXT, TorrentXT, enetxt, DataChannelXT, Box2Dxt and CoinXT need macOS 15 Sequoia or later: on older macOS the IDE starts, but those extensions do not load.
 
-- `{root}-mac-universal.dmg`: the disk image. Open it and drag OXT-Beyond onto the Applications folder next to it.
+- `{root}-mac-universal.dmg`: the disk image. Open it and drag OpenXTalk-Lite onto the Applications folder next to it.
 - `{root}-mac-universal.zip`: the same app, for scripted installs (`ditto -x -k {root}-mac-universal.zip /Applications`).
 - `{root}-mac-universal-binaries.tar.xz`: the build output (`Release/`, the Apple Silicon and Intel builds joined with lipo), signed ad hoc, without debug symbols and the build's own tools, plus the licence files.
 - `{root}-mac-universal-symbols.zip`: debug symbols (`.dSYM` bundles) for the binaries.
 
 **Opening it for the first time.** The app is signed ad hoc: it is not signed with an Apple Developer ID and not notarized by Apple, so macOS does not open a downloaded copy until you allow it. You do this once. On macOS 15 Sequoia and later:
 
-1. Double-click OXT-Beyond. macOS says that it was not opened; click **Done** (not *Move to Trash*).
-2. Open **System Settings > Privacy & Security** and scroll down to *Security*. Next to "OXT-Beyond was blocked to protect your Mac", click **Open Anyway**.
+1. Double-click OpenXTalk-Lite. macOS says that it was not opened; click **Done** (not *Move to Trash*).
+2. Open **System Settings > Privacy & Security** and scroll down to *Security*. Next to "OpenXTalk-Lite was blocked to protect your Mac", click **Open Anyway**.
 3. Confirm with **Open Anyway** and your password (or Touch ID).
 
 On macOS 13 and 14, Control-click the app in Finder, choose *Open* and then *Open* again; on macOS 12 and earlier, the button is in *System Preferences > Security & Privacy > General*. Or, in Terminal, remove the quarantine flag that the browser set on the download:
 
 ```sh
-xattr -dr com.apple.quarantine /Applications/OXT-Beyond.app
+xattr -dr com.apple.quarantine /Applications/OpenXTalk-Lite.app
 ```
 
 The same command helps if macOS says the app "is damaged and can't be opened": that is how some macOS versions report an app that is not notarized.
@@ -133,7 +133,7 @@ The same command helps if macOS says the app "is damaged and can't be opened": t
 
 Needs 64-bit x86 Linux with glibc 2.31 or later (Ubuntu 20.04, Debian 11, Fedora 32 or later) and an X11 desktop (on Wayland it runs through XWayland), with GTK 2: on Debian and Ubuntu the package `libgtk2.0-0` (`libgtk2.0-0t64` on Ubuntu 24.04 and Debian 13), on Fedora `gtk2`. The launcher names any library that is missing, with its package. The browser widget and revBrowser also need NSS, ALSA and a few more X11 libraries; without them the launcher turns the browser off. Of the bundled xTalk Suite extensions, SodiumXT needs glibc 2.33 (Ubuntu 21.04, Debian 12, Fedora 34 or later) and DataChannelXT glibc 2.38 and OpenSSL 3 (Ubuntu 24.04, Debian 13, Fedora 39 or later); on an older system these two do not load, and the IDE and the other extensions work.
 
-- `{root}-linux-x86_64.tar.xz`: the program folder `{root}`. Extract it onto a Linux file system (not FAT, exFAT or a Windows drive) and run `./oxt-beyond` in it, or run `./install.sh` to install it for yourself: under `~/.local/share/oxt-beyond`, with a menu entry, icons, the .oxtstack and .oxtscript file types and the command `oxt-beyond`, without administrator rights.
+- `{root}-linux-x86_64.tar.xz`: the program folder `{root}`. Extract it onto a Linux file system (not FAT, exFAT or a Windows drive) and run `./openxtalk-lite` in it, or run `./install.sh` to install it for yourself: under `~/.local/share/openxtalk-lite`, with a menu entry, icons, the .oxtstack and .oxtscript file types and the command `openxtalk-lite`, without administrator rights.
 - `{root}-linux-x86_64-binaries.tar.xz`: the engine, externals and tools as built (`linux-x86_64-bin`), without debug symbols and the build's own tools, plus the licence files.
 - `{root}-linux-x86_64-symbols.tar.xz`: debug symbols (`.dbg` files) for the binaries.
 
@@ -156,7 +156,7 @@ The programs include the xTalk Suite extensions (SodiumXT, TorrentXT, enetxt, Da
 
 Each package's engine, externals and tools are built from this repository, for Windows x86-64, for macOS (Apple Silicon and Intel, joined into universal files) and for Linux x86-64, and so are the standalone runtimes every package carries for Windows (x86-64 and x86) and Linux (x86-64 and x86), with the time zone library code for them. The Android standalone runtime is not built here: it is taken unchanged from OpenXTalk Lite 1.15 (stock LiveCode 9.6.3 builds and files as Tom Perry shipped them; see THIRD-PARTY-NOTICES.md). Only the macOS package has the macOS runtimes.
 
-OXT-Beyond continues OpenXTalk Lite, started by Terry Little and developed by Tom Perry with contributions from the OpenXTalk community. It is based on LiveCode Community and licensed under the GNU GPL version 3.
+OpenXTalk-Lite continues OpenXTalk Lite, started by Terry Little and developed by Tom Perry with contributions from the OpenXTalk community. It is based on LiveCode Community and licensed under the GNU GPL version 3.
 '''
 
 

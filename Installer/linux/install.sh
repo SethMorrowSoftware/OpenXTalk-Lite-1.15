@@ -15,15 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-# Installs OXT-Beyond for the current user, from the folder this script is
-# in (the extracted OXT-Beyond-<version>-linux-x86_64.tar.xz):
+# Installs OpenXTalk-Lite for the current user, from the folder this script is
+# in (the extracted OpenXTalk-Lite-<version>-linux-x86_64.tar.xz):
 #
-#   ${XDG_DATA_HOME:-~/.local/share}/oxt-beyond/   a copy of the folder
-#   .../applications/oxt-beyond.desktop            the menu entry; it opens
+#   ${XDG_DATA_HOME:-~/.local/share}/openxtalk-lite/   a copy of the folder
+#   .../applications/openxtalk-lite.desktop            the menu entry; it opens
 #                                                  .oxtstack and .oxtscript
-#   .../icons/hicolor/<n>x<n>/apps/oxt-beyond.png  the icon, 16 to 512 px
-#   .../mime/packages/oxt-beyond.xml               the two file types
-#   ~/.local/bin/oxt-beyond                        a link to the launcher
+#   .../icons/hicolor/<n>x<n>/apps/openxtalk-lite.png  the icon, 16 to 512 px
+#   .../mime/packages/openxtalk-lite.xml               the two file types
+#   ~/.local/bin/openxtalk-lite                        a link to the launcher
 #
 # and runs update-desktop-database and update-mime-database where they
 # exist, and gtk-update-icon-cache where the icon folder already has a
@@ -32,7 +32,7 @@
 # root: the files belong in one user's home folder.
 #
 # Every file, link and folder it creates is listed in
-# oxt-beyond/.install-manifest, which uninstall.sh reads to remove exactly
+# openxtalk-lite/.install-manifest, which uninstall.sh reads to remove exactly
 # those again (and the program folder); a file it did not create is never
 # replaced or removed. Running it again replaces the installed copy (a newer
 # version, say) and removes what the previous install created that this one
@@ -48,7 +48,7 @@ nl='
 '
 tab=$(printf '\t')
 manifest_name=.install-manifest
-manifest_header='# OXT-Beyond install manifest 1'
+manifest_header='# OpenXTalk-Lite install manifest 1'
 icon_sizes='16 24 32 48 64 128 256 512'
 
 # Once the program folder is this install's (step 1, program_ready=1), a
@@ -90,10 +90,10 @@ for arg in "$@"; do
             cat <<'EOF'
 Usage: ./install.sh
 
-Installs OXT-Beyond for you (not for all users) from the folder this script
-is in: the program into ${XDG_DATA_HOME:-~/.local/share}/oxt-beyond, a menu
+Installs OpenXTalk-Lite for you (not for all users) from the folder this script
+is in: the program into ${XDG_DATA_HOME:-~/.local/share}/openxtalk-lite, a menu
 entry, icons and the .oxtstack and .oxtscript file types, and the command
-~/.local/bin/oxt-beyond. Run it again to update; run uninstall.sh (in the
+~/.local/bin/openxtalk-lite. Run it again to update; run uninstall.sh (in the
 installed folder) to remove everything it installed.
 EOF
             exit 0 ;;
@@ -101,7 +101,7 @@ EOF
     esac
 done
 
-[ "$(id -u)" != 0 ] || die "do not run this as root (or with sudo): it installs OXT-Beyond for one user, into that user's home folder. Run it as that user."
+[ "$(id -u)" != 0 ] || die "do not run this as root (or with sudo): it installs OpenXTalk-Lite for one user, into that user's home folder. Run it as that user."
 [ -n "${HOME:-}" ] && [ -d "$HOME" ] || die "HOME is not set to a folder"
 
 # The folder of this script (the package), with symbolic links followed
@@ -124,11 +124,11 @@ done
 dir=${self%/*}
 [ -n "$dir" ] || dir=/
 src=$(cd -P -- "$dir" && pwd -P) || die "cannot enter $dir"
-for f in OXT-Beyond oxt-beyond uninstall.sh linux/oxt-beyond.desktop linux/oxt-beyond.xml linux/libraries.txt; do
-    [ -e "$src/$f" ] || die "$src/$f is missing: run install.sh from the extracted OXT-Beyond folder, with all its files"
+for f in OpenXTalk-Lite openxtalk-lite uninstall.sh linux/openxtalk-lite.desktop linux/openxtalk-lite.xml linux/libraries.txt; do
+    [ -e "$src/$f" ] || die "$src/$f is missing: run install.sh from the extracted OpenXTalk-Lite folder, with all its files"
 done
 for n in $icon_sizes; do
-    [ -f "$src/linux/icons/oxt-beyond-$n.png" ] || die "$src/linux/icons/oxt-beyond-$n.png is missing"
+    [ -f "$src/linux/icons/openxtalk-lite-$n.png" ] || die "$src/linux/icons/openxtalk-lite-$n.png is missing"
 done
 
 # Where things go. XDG_DATA_HOME counts only when it is an absolute path
@@ -140,7 +140,7 @@ case $data in
 esac
 data=${data%/}
 bindir=$HOME/.local/bin
-app=$data/oxt-beyond
+app=$data/openxtalk-lite
 manifest=$app/$manifest_name
 case $app$bindir in
     *"$nl"*|*"$tab"*) die "the install folder $app has a line break or tab in its name, which a desktop entry cannot hold" ;;
@@ -153,7 +153,7 @@ if [ -f "$manifest" ]; then
     old_manifest=$(cat "$manifest") || die "cannot read $manifest"
     case $old_manifest in
         "$manifest_header$nl"*|"$manifest_header") ;;
-        *) die "$manifest is not an OXT-Beyond install manifest; remove $app yourself first" ;;
+        *) die "$manifest is not an OpenXTalk-Lite install manifest; remove $app yourself first" ;;
     esac
 fi
 in_old() {
@@ -213,13 +213,13 @@ copy_file() {    # source target (recorded as a file of ours)
 
 # 1. The program folder
 if [ "$src" = "$app" ]; then
-    printf 'Registering OXT-Beyond in %s (already installed there)\n' "$app"
+    printf 'Registering OpenXTalk-Lite in %s (already installed there)\n' "$app"
 else
     if [ -e "$app" ] || [ -L "$app" ]; then
         [ -n "$old_manifest" ] || die "$app exists but was not installed by install.sh (it has no $manifest_name); move or remove it first"
-        printf 'Replacing the OXT-Beyond installed in %s\n' "$app"
+        printf 'Replacing the OpenXTalk-Lite installed in %s\n' "$app"
     else
-        printf 'Installing OXT-Beyond into %s\n' "$app"
+        printf 'Installing OpenXTalk-Lite into %s\n' "$app"
     fi
     make_dir "$data"
     new=$app.new-$$
@@ -277,9 +277,9 @@ fi
 # double quotes, backslash, double quote, backquote and dollar sign are
 # escaped with a backslash, and then every backslash is escaped again as a
 # string value; a literal % is %%)
-exec_arg=$(printf '%s' "$app/oxt-beyond" | sed -e 's/\\/\\\\\\\\/g' -e 's/"/\\\\"/g' -e 's/`/\\\\`/g' -e 's/\$/\\\\$/g' -e 's/%/%%/g')
-tryexec=$(printf '%s' "$app/oxt-beyond" | sed -e 's/\\/\\\\/g')
-desktop=$data/applications/oxt-beyond.desktop
+exec_arg=$(printf '%s' "$app/openxtalk-lite" | sed -e 's/\\/\\\\\\\\/g' -e 's/"/\\\\"/g' -e 's/`/\\\\`/g' -e 's/\$/\\\\$/g' -e 's/%/%%/g')
+tryexec=$(printf '%s' "$app/openxtalk-lite" | sed -e 's/\\/\\\\/g')
+desktop=$data/applications/openxtalk-lite.desktop
 if own_or_new "$desktop"; then
     make_dir "$data/applications"
     rm -f "$desktop"
@@ -289,7 +289,7 @@ if own_or_new "$desktop"; then
             TryExec=*) printf 'TryExec=%s\n' "$tryexec" ;;
             *) printf '%s\n' "$line" ;;
         esac
-    done < "$app/linux/oxt-beyond.desktop" > "$desktop" || die "cannot write $desktop"
+    done < "$app/linux/openxtalk-lite.desktop" > "$desktop" || die "cannot write $desktop"
     chmod 0644 "$desktop"
     record "file $desktop"
 else
@@ -298,24 +298,24 @@ fi
 
 # 3. Icons and file types
 for n in $icon_sizes; do
-    copy_file "$app/linux/icons/oxt-beyond-$n.png" "$data/icons/hicolor/${n}x$n/apps/oxt-beyond.png"
+    copy_file "$app/linux/icons/openxtalk-lite-$n.png" "$data/icons/hicolor/${n}x$n/apps/openxtalk-lite.png"
 done
-copy_file "$app/linux/oxt-beyond.xml" "$data/mime/packages/oxt-beyond.xml"
+copy_file "$app/linux/openxtalk-lite.xml" "$data/mime/packages/openxtalk-lite.xml"
 
 # 4. The command. The link there is ours only while it still leads to this
 # launcher (the test uninstall.sh makes), whatever the previous manifest
 # says: a user may have put a wrapper script there since (one that sets
 # GDK_SCALE for this GTK 2 program on a HiDPI screen, say), or a link to
 # something else, and that stays.
-link=$bindir/oxt-beyond
-if [ -L "$link" ] && [ "$(readlink "$link")" = "$app/oxt-beyond" ]; then
+link=$bindir/openxtalk-lite
+if [ -L "$link" ] && [ "$(readlink "$link")" = "$app/openxtalk-lite" ]; then
     rm -f "$link"
 fi
 if [ -e "$link" ] || [ -L "$link" ]; then
     printf 'install.sh: warning: %s exists and is not a link that install.sh made; left as it is\n' "$link" >&2
 else
     make_dir "$bindir"
-    ln -s "$app/oxt-beyond" "$link" || die "cannot create the link $link"
+    ln -s "$app/openxtalk-lite" "$link" || die "cannot create the link $link"
     record "link $link"
 fi
 
@@ -331,7 +331,7 @@ while IFS= read -r line; do
         "file "*)
             if [ -L "$path" ] || [ -f "$path" ]; then rm -f "$path"; fi ;;
         "link "*)
-            if [ -L "$path" ] && [ "$(readlink "$path")" = "$app/oxt-beyond" ]; then rm -f "$path"; fi ;;
+            if [ -L "$path" ] && [ "$(readlink "$path")" = "$app/openxtalk-lite" ]; then rm -f "$path"; fi ;;
     esac
 done <<EOF
 $old_manifest
@@ -341,7 +341,7 @@ EOF
 # mime/packages/*.xml into the rest of the mime folder (mime.cache, globs2,
 # application/x-oxtstack.xml and so on), update-desktop-database the
 # MimeType lines of applications/*.desktop into mimeinfo.cache. When there
-# was no such database before OXT-Beyond's first install, it is recorded as
+# was no such database before OpenXTalk-Lite's first install, it is recorded as
 # ours ("mimedb", "desktopdb"): uninstall.sh then removes it once no other
 # program's file is left in it, instead of leaving an empty database behind.
 # In a database that is not ours, uninstall.sh runs update-mime-database
@@ -375,9 +375,9 @@ fi
 # the entries so far through die.)
 printf '%s\n' "$new_manifest" > "$manifest.tmp" && mv "$manifest.tmp" "$manifest" || die "cannot write $manifest"
 
-printf 'Installed. Start OXT-Beyond from the application menu (Development), or with\n'
+printf 'Installed. Start OpenXTalk-Lite from the application menu (Development), or with\n'
 case ":${PATH:-}:" in
-    *":$bindir:"*) printf '  oxt-beyond\n' ;;
+    *":$bindir:"*) printf '  openxtalk-lite\n' ;;
     *) printf '  %s\n(%s is not on your PATH.)\n' "$link" "$bindir" ;;
 esac
 printf 'To remove it again: %s/uninstall.sh\n' "$app"

@@ -1,21 +1,20 @@
-; OXT-Beyond installer for Windows x86-64 (Inno Setup 6.3 or later).
+; OpenXTalk Lite 1.15 installer for Windows x86-64 (Inno Setup 6.3 or later),
+; for the build of Tom Perry's OpenXTalk Lite 1.15 source in this repository.
 ;
 ; Packs the staged installed layout written by tools/oxt/package.py
-; (dist/stage/OXT-Beyond-<version>/) into OXT-Beyond-<version>-win-x86_64-setup.exe.
+; (dist/stage/OpenXTalk-Lite-<version>/) into OpenXTalk-Lite-<version>-win-x86_64-setup.exe.
 ; tools/ci/build-installer.ps1 runs the compiler with these defines:
 ;
 ;   /DAppVersion=<version>      product version (ide/.version), for example 0.0.1
 ;   /DBuildNumber=<number>      build number (the staged .buildnumber)
 ;   /DStageDir=<folder>         the staged installed layout
 ;   /DOutputDir=<folder>        where the setup program is written (dist)
-;   /DRepoRoot=<folder>         repository root (for ide/OXT-Beyond.ico)
-;   /DWizardImageFile=<list>    optional: comma-separated wizard images
-;   /DWizardSmallImageFile=<list>  optional: comma-separated small wizard images
+;   /DRepoRoot=<folder>         repository root (for ide/OpenXTalk-lite_1024.ico)
 ;
 ; Without the defines, the version is read from ide/.version, the stage is
-; expected in dist/stage/OXT-Beyond-<version>, the build number is read
-; from the stage and Inno Setup's built-in wizard images are used, so the
-; script can also be compiled on its own from the Inno Setup IDE.
+; expected in dist/stage/OpenXTalk-Lite-<version> and the build number is read
+; from the stage, so the script can also be compiled on its own from the
+; Inno Setup IDE. The wizard uses Inno Setup's built-in images.
 ;
 ; Setup first asks whether to install for all users (Program Files, needs
 ; administrator rights; the default) or for the current user only
@@ -23,15 +22,18 @@
 ; choose without asking. HKA and the {auto...} constants follow the chosen
 ; mode. The uninstaller removes the
 ; program files, shortcuts and file associations, but not the IDE's
-; preferences (%APPDATA%\OXT-Beyond) or caches (%LOCALAPPDATA%\OXT-Beyond).
+; preferences and caches, which it keeps in the user's own folders.
 
 #if VER < EncodeVer(6, 3, 0, 0)
   #error Inno Setup 6.3 or later is required to compile this script.
 #endif
 
-#define AppName "OXT-Beyond"
-#define AppExeName "OXT-Beyond.exe"
-#define RepoUrl "https://github.com/SethMorrowSoftware/OpenXTalk-Beyond"
+; AppName is what the wizard, the Start menu and Settings > Apps show;
+; AppFileName names the files (the stage folder and the setup program).
+#define AppName "OpenXTalk Lite"
+#define AppFileName "OpenXTalk-Lite"
+#define AppExeName "OpenXTalk-Lite.exe"
+#define RepoUrl "https://github.com/SethMorrowSoftware/OpenXTalk-Lite-1.15"
 
 #ifndef RepoRoot
   #define RepoRoot AddBackslash(SourcePath) + "..\.."
@@ -48,7 +50,7 @@
 #endif
 
 #ifndef StageDir
-  #define StageDir RepoRoot + "\dist\stage\" + AppName + "-" + AppVersion
+  #define StageDir RepoRoot + "\dist\stage\" + AppFileName + "-" + AppVersion
 #endif
 
 #ifndef OutputDir
@@ -61,7 +63,7 @@
 #endif
 #if !FileExists(StageDir + "\" + AppExeName)
   #pragma message "Missing: " + StageDir + "\" + AppExeName
-  #error The staged layout has no OXT-Beyond.exe.
+  #error The staged layout has no OpenXTalk-Lite.exe.
 #endif
 #if !FileExists(StageDir + "\LICENSE")
   #error The staged layout has no LICENSE file.
@@ -87,28 +89,28 @@
   #define NumericVersion Copy(NumericVersion, 1, Pos("+", NumericVersion) - 1)
 #endif
 
-#define SetupIcon RepoRoot + "\ide\OXT-Beyond.ico"
+#define SetupIcon RepoRoot + "\ide\OpenXTalk-lite_1024.ico"
 #if !FileExists(SetupIcon)
   #pragma message "Missing: " + SetupIcon
-  #error ide/OXT-Beyond.ico was not found.
+  #error ide/OpenXTalk-lite_1024.ico was not found.
 #endif
 
 [Setup]
 ; Fixed for every release: it names the uninstall registry key
-; ({6CB5C1F5-4B20-43EF-B5F6-1C0C2C07B803}_is1) and lets a new version
+; ({72C8F7E3-3D86-4356-AE3F-51312969978B}_is1) and lets a new build
 ; replace an installed one. Never change it.
-AppId={{6CB5C1F5-4B20-43EF-B5F6-1C0C2C07B803}
+AppId={{72C8F7E3-3D86-4356-AE3F-51312969978B}
 AppName={#AppName}
 AppVersion={#AppVersion}
-; "OXT-Beyond 0.0.1" in the wizard and in Settings > Apps, instead of Inno
-; Setup's default "OXT-Beyond version 0.0.1".
+; "OpenXTalk Lite 1.15" in the wizard and in Settings > Apps, instead of Inno
+; Setup's default "OpenXTalk Lite version 1.15".
 AppVerName={#AppName} {#AppVersion}
 UninstallDisplayName={#AppName} {#AppVersion}
-AppPublisher=OXT-Beyond contributors
+AppPublisher=SethMorrowSoftware/OpenXTalk-Lite-1.15
 AppPublisherURL={#RepoUrl}
 AppSupportURL={#RepoUrl}/issues
 AppUpdatesURL={#RepoUrl}/releases
-AppComments=xTalk IDE, continuing OpenXTalk Lite by Terry Little, Tom Perry and the OpenXTalk contributors, based on LiveCode Community.
+AppComments=OpenXTalk Lite 1.15 by Terry Little, Tom Perry and the OpenXTalk contributors, based on LiveCode Community, built from source.
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -121,7 +123,7 @@ PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog commandline
 LicenseFile={#StageDir}\LICENSE
 OutputDir={#OutputDir}
-OutputBaseFilename={#AppName}-{#AppVersion}-win-x86_64-setup
+OutputBaseFilename={#AppFileName}-{#AppVersion}-win-x86_64-setup
 SetupIconFile={#SetupIcon}
 WizardStyle=modern
 #ifdef WizardImageFile
@@ -145,7 +147,7 @@ VersionInfoTextVersion={#AppVersion}
 VersionInfoProductTextVersion={#AppVersion} (build {#BuildNumber})
 VersionInfoProductName={#AppName}
 VersionInfoDescription={#AppName} Setup
-VersionInfoCompany=OXT-Beyond contributors
+VersionInfoCompany=SethMorrowSoftware/OpenXTalk-Lite-1.15
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -201,19 +203,19 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "
 [Registry]
 ; File associations, in HKLM (install for all users) or HKCU (install for
 ; the current user) through HKA. The programmatic identifiers are our own
-; (OXTBeyond.*), so they do not collide with the OXTStack identifier that
+; (OpenXTalkLite.*), so they do not collide with the OXTStack identifier that
 ; the OpenXTalk Lite IDE registers for itself. Icon 1 of the executable is
 ; the document icon (engine/rsrc/development.rc).
-Root: HKA; Subkey: "Software\Classes\.oxtstack"; ValueType: string; ValueName: ""; ValueData: "OXTBeyond.Stack"; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\.oxtstack\OpenWithProgids"; ValueType: string; ValueName: "OXTBeyond.Stack"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\OXTBeyond.Stack"; ValueType: string; ValueName: ""; ValueData: "{#AppName} Stack"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\OXTBeyond.Stack\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},1"; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\OXTBeyond.Stack\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\.oxtscript"; ValueType: string; ValueName: ""; ValueData: "OXTBeyond.Script"; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\.oxtscript\OpenWithProgids"; ValueType: string; ValueName: "OXTBeyond.Script"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\OXTBeyond.Script"; ValueType: string; ValueName: ""; ValueData: "{#AppName} Script-Only Stack"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\OXTBeyond.Script\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},1"; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\OXTBeyond.Script\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.oxtstack"; ValueType: string; ValueName: ""; ValueData: "OpenXTalkLite.Stack"; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.oxtstack\OpenWithProgids"; ValueType: string; ValueName: "OpenXTalkLite.Stack"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\OpenXTalkLite.Stack"; ValueType: string; ValueName: ""; ValueData: "{#AppName} Stack"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\OpenXTalkLite.Stack\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},1"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\OpenXTalkLite.Stack\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.oxtscript"; ValueType: string; ValueName: ""; ValueData: "OpenXTalkLite.Script"; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.oxtscript\OpenWithProgids"; ValueType: string; ValueName: "OpenXTalkLite.Script"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\OpenXTalkLite.Script"; ValueType: string; ValueName: ""; ValueData: "{#AppName} Script-Only Stack"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\OpenXTalkLite.Script\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},1"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\OpenXTalkLite.Script\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
 ; "Open with" support for both types, whether or not the task is selected.
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExeName}"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "{#AppName}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExeName}\SupportedTypes"; ValueType: string; ValueName: ".oxtstack"; ValueData: ""

@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-"""Sign OXT-Beyond.app (or a macOS build output) ad hoc, from the inside
+"""Sign OpenXTalk-Lite.app (or a macOS build output) ad hoc, from the inside
 out, and verify the result.
 
   python tools/ci/sign_mac_app.py TARGET [--dry-run] [--no-verify]
 
-TARGET is an .app bundle (the staged OXT-Beyond.app) or a folder (the
+TARGET is an .app bundle (the staged OpenXTalk-Lite.app) or a folder (the
 merged Release tree, whose binaries archive is published). Every piece of
 macOS code in it is signed with
 
@@ -202,7 +202,7 @@ def run(cmd):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Sign OXT-Beyond.app or a macOS build output ad hoc, from the inside '
+    ap = argparse.ArgumentParser(description='Sign OpenXTalk-Lite.app or a macOS build output ad hoc, from the inside '
                                              'out, and verify it.')
     ap.add_argument('target', help='the .app bundle, or a build output folder')
     ap.add_argument('--dry-run', action='store_true', help='print the signing order only')

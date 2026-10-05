@@ -16,7 +16,7 @@
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
 # Removes what install.sh installed for the current user, and only that:
-# the entries of ${XDG_DATA_HOME:-~/.local/share}/oxt-beyond/.install-manifest
+# the entries of ${XDG_DATA_HOME:-~/.local/share}/openxtalk-lite/.install-manifest
 # (see install.sh) are
 #
 #   file <path>     removed
@@ -30,7 +30,7 @@
 #   desktopdb <path>
 #                   the same for applications/mimeinfo.cache
 #
-# The IDE's preferences, caches and logs (~/.oxt-beyond) and your own
+# The IDE's preferences, caches and logs (~/.openxtalk-lite) and your own
 # stacks and extensions are not touched. It works from the installed
 # folder (which it removes) and from any extracted package: it always acts
 # on the install of the current user.
@@ -40,7 +40,7 @@
 set -f
 nl='
 '
-manifest_header='# OXT-Beyond install manifest 1'
+manifest_header='# OpenXTalk-Lite install manifest 1'
 
 die() {
     printf 'uninstall.sh: %s\n' "$1" >&2
@@ -53,9 +53,9 @@ for arg in "$@"; do
             cat <<'EOF'
 Usage: uninstall.sh
 
-Removes OXT-Beyond as install.sh installed it for you: the program folder
-${XDG_DATA_HOME:-~/.local/share}/oxt-beyond, the menu entry, the icons, the
-file types and ~/.local/bin/oxt-beyond. Your preferences (~/.oxt-beyond),
+Removes OpenXTalk-Lite as install.sh installed it for you: the program folder
+${XDG_DATA_HOME:-~/.local/share}/openxtalk-lite, the menu entry, the icons, the
+file types and ~/.local/bin/openxtalk-lite. Your preferences (~/.openxtalk-lite),
 stacks and extensions stay.
 EOF
             exit 0 ;;
@@ -63,7 +63,7 @@ EOF
     esac
 done
 
-[ "$(id -u)" != 0 ] || die "do not run this as root (or with sudo): OXT-Beyond is installed for one user; run uninstall.sh as that user."
+[ "$(id -u)" != 0 ] || die "do not run this as root (or with sudo): OpenXTalk-Lite is installed for one user; run uninstall.sh as that user."
 [ -n "${HOME:-}" ] && [ -d "$HOME" ] || die "HOME is not set to a folder"
 
 data=${XDG_DATA_HOME:-}
@@ -72,14 +72,14 @@ case $data in
     *) data=$HOME/.local/share ;;
 esac
 data=${data%/}
-app=$data/oxt-beyond
+app=$data/openxtalk-lite
 manifest=$app/.install-manifest
 
-[ -f "$manifest" ] || die "there is no OXT-Beyond installed by install.sh in $app (no $manifest)"
+[ -f "$manifest" ] || die "there is no OpenXTalk-Lite installed by install.sh in $app (no $manifest)"
 entries=$(cat "$manifest") || die "cannot read $manifest"
 case $entries in
     "$manifest_header$nl"*|"$manifest_header") ;;
-    *) die "$manifest is not an OXT-Beyond install manifest; nothing was removed" ;;
+    *) die "$manifest is not an OpenXTalk-Lite install manifest; nothing was removed" ;;
 esac
 has() {
     case "$nl$entries$nl" in
@@ -92,7 +92,7 @@ has "program $app" || die "$manifest does not name $app as the program folder; n
 # Leave the program folder, which is about to go (this script may be in it)
 cd / || die "cannot leave $app"
 
-printf 'Removing OXT-Beyond from %s\n' "$app"
+printf 'Removing OpenXTalk-Lite from %s\n' "$app"
 
 # 1. Files and links
 while IFS= read -r line; do
@@ -100,7 +100,7 @@ while IFS= read -r line; do
     case $line in
         "file "*) if [ -f "$path" ] || [ -L "$path" ]; then rm -f "$path" || printf 'uninstall.sh: warning: cannot remove %s\n' "$path" >&2; fi ;;
         # (only while it still leads to our launcher)
-        "link "*) if [ -L "$path" ] && [ "$(readlink "$path")" = "$app/oxt-beyond" ]; then
+        "link "*) if [ -L "$path" ] && [ "$(readlink "$path")" = "$app/openxtalk-lite" ]; then
                       rm -f "$path" || printf 'uninstall.sh: warning: cannot remove %s\n' "$path" >&2
                   fi ;;
     esac
@@ -166,5 +166,5 @@ while IFS= read -r folder; do
     [ -d "$folder" ] && rmdir "$folder" 2>/dev/null
 done
 
-printf 'Removed. Your preferences in ~/.oxt-beyond, and your stacks and extensions, are still there.\n'
+printf 'Removed. Your preferences in ~/.openxtalk-lite, and your stacks and extensions, are still there.\n'
 exit 0

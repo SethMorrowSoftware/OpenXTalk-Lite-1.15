@@ -1,4 +1,5 @@
 # Engine test suite (tools/ci/run_engine_tests.py): tests known to fail on
-# Linux that are not in engine-tests-baseline.txt (the failures on every
-# platform). One "<suite>: <test>" per line; "? " before it: fails only
-# sometimes; text after " #" is a comment.
+# Linux with Tom Perry's OpenXTalk Lite 1.15 code that are not in
+# engine-tests-baseline.txt (the failures on every platform). One
+# "<suite>: <test>" per line; "? " before it: fails only sometimes; text
+# after " #" is a comment. See engine-tests-baseline.txt.

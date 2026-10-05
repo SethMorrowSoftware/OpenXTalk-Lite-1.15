@@ -1,10 +1,10 @@
 script "oxt_smoke_test"
--- Headless smoke test for a build of OXT-Beyond (Windows, Linux or macOS).
+-- Headless smoke test for a build of OpenXTalk-Lite (Windows, Linux or macOS).
 --
 -- Run it with the development engine, without the IDE:
 --
 --    win-x86_64-bin\LiveCode-Community.exe -ui tools\ci\smoke-test.livecodescript
---    OXT-Beyond.exe -ui tools\ci\smoke-test.livecodescript    (installed)
+--    OpenXTalk-Lite.exe -ui tools\ci\smoke-test.livecodescript    (installed)
 --
 -- tools/ci/smoke-test.ps1 (Windows) and tools/ci/run_livecode_check.py
 -- (every platform) do this and set the expected values below from the
@@ -247,7 +247,7 @@ end oneLine
 -- The appAppearance and the stackAppearance (engine/src/appearance.cpp),
 -- and the colours an object reports in the dark appearance (the effective
 -- foreColor, MCObject::isdarkappearance in engine/src/object.cpp). Engines
--- without the properties (OXT-Beyond 0.1.0 and earlier) print a SKIP line. Every use of the new syntax is inside "do": this script must still
+-- without the properties (Tom Perry's 9.7.1-OXT engine, and OXT-Beyond 0.1.0 and earlier) print a SKIP line. Every use of the new syntax is inside "do": this script must still
 -- compile on those engines.
 private command checkAppearance
    local tValue, tError, tThrew, tSystem, tPaint, tLinux, tExternals

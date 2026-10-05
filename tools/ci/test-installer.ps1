@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Installs the OXT-Beyond setup program silently for the current user,
+    Installs the OpenXTalk-Lite setup program silently for the current user,
     checks the installation, runs the smoke test on it and uninstalls it.
 
 .DESCRIPTION
-    1. Refuses to run when OXT-Beyond is already installed for the current
+    1. Refuses to run when OpenXTalk-Lite is already installed for the current
        user: the test would replace that installation and then remove it.
     2. Runs the setup program with
          /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /NOCANCEL
@@ -35,15 +35,15 @@
     Written to run under Windows PowerShell 5.1 and PowerShell 7.
 
 .PARAMETER Setup
-    The OXT-Beyond-<version>-win-x86_64-setup.exe to test.
+    The OpenXTalk-Lite-<version>-win-x86_64-setup.exe to test.
 
 .PARAMETER InstallDir
     Folder to install into. It must not exist or be empty. Default: a new
-    folder OXT-Beyond-test-<random> under RUNNER_TEMP or the temporary folder.
+    folder OpenXTalk-Lite-test-<random> under RUNNER_TEMP or the temporary folder.
 
 .PARAMETER Stage
     Staged installed layout to compare the installed files with. Default:
-    stage\OXT-Beyond-<version> next to the setup program, if it exists.
+    stage\OpenXTalk-Lite-<version> next to the setup program, if it exists.
 
 .PARAMETER RepoRoot
     Repository root. Default: two levels up from this script.
@@ -76,10 +76,13 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
-$ProductName = 'OXT-Beyond'
-$ExeName = 'OXT-Beyond.exe'
-$Publisher = 'OXT-Beyond contributors'
-$RepoUrl = 'https://github.com/SethMorrowSoftware/OpenXTalk-Beyond'
+# ProductName names the files; AppName is what the installer shows (its
+# AppName: the Start menu folder, the shortcuts, Settings > Apps)
+$ProductName = 'OpenXTalk-Lite'
+$AppName = 'OpenXTalk Lite'
+$ExeName = 'OpenXTalk-Lite.exe'
+$Publisher = 'SethMorrowSoftware/OpenXTalk-Lite-1.15'
+$RepoUrl = 'https://github.com/SethMorrowSoftware/OpenXTalk-Lite-1.15'
 $UsersSid = 'S-1-5-32-545'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
@@ -94,7 +97,7 @@ if ((Split-Path -Leaf $Setup) -ne $expectedSetupName) {
 }
 
 # The uninstall registry key is named after the fixed AppId in the script
-$issPath = Join-Path $RepoRoot 'Installer\oxt-beyond\oxt-beyond.iss'
+$issPath = Join-Path $RepoRoot 'Installer\openxtalk-lite\openxtalk-lite.iss'
 $appIdMatch = [regex]::Match([System.IO.File]::ReadAllText($issPath), '(?m)^\s*AppId\s*=\s*\{\{([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})\}')
 if (-not $appIdMatch.Success) { throw "AppId not found in $issPath" }
 $UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{' + $appIdMatch.Groups[1].Value + '}_is1'
@@ -222,7 +225,7 @@ if (Test-RegKey $HKLM $UninstallKey) {
 }
 
 $testAssociations = $true
-foreach ($pair in @(@('.oxtstack', 'OXTBeyond.Stack'), @('.oxtscript', 'OXTBeyond.Script'))) {
+foreach ($pair in @(@('.oxtstack', 'OpenXTalkLite.Stack'), @('.oxtscript', 'OpenXTalkLite.Script'))) {
     $current = Get-RegValue $HKCU "Software\Classes\$($pair[0])" ''
     if ($current -and $current -ne $pair[1]) {
         Write-Warning "$($pair[0]) is associated with '$current' for this user; the file association task is left out of the test."
@@ -231,10 +234,10 @@ foreach ($pair in @(@('.oxtstack', 'OXTBeyond.Stack'), @('.oxtscript', 'OXTBeyon
 }
 $programsDir = [Environment]::GetFolderPath('Programs')
 $desktopDir = [Environment]::GetFolderPath('DesktopDirectory')
-$groupDir = Join-Path $programsDir $ProductName
-$appLink = Join-Path $groupDir "$ProductName.lnk"
-$uninstallLink = Join-Path $groupDir "Uninstall $ProductName.lnk"
-$desktopLink = Join-Path $desktopDir "$ProductName.lnk"
+$groupDir = Join-Path $programsDir $AppName
+$appLink = Join-Path $groupDir "$AppName.lnk"
+$uninstallLink = Join-Path $groupDir "Uninstall $AppName.lnk"
+$desktopLink = Join-Path $desktopDir "$AppName.lnk"
 $testDesktopLink = -not (Test-Path -LiteralPath $desktopLink)
 if (-not $testDesktopLink) {
     Write-Warning "$desktopLink exists already; the desktop shortcut task is left out of the test."
@@ -314,7 +317,7 @@ try {
         # Setup adds a suffix to DisplayName when another entry already has
         # the same name (for example an installation for all users)
         $value = Get-RegValue $HKCU $UninstallKey 'DisplayName'
-        Add-Check "DisplayName is '$ProductName $Version'" ("$value" -like "$ProductName $Version*") "$value"
+        Add-Check "DisplayName is '$AppName $Version'" ("$value" -like "$AppName $Version*") "$value"
         $expect = [ordered]@{
             DisplayVersion = $Version
             Publisher      = $Publisher
@@ -352,7 +355,7 @@ try {
     $command = "`"$(Join-Path $InstallDir $ExeName)`" `"%1`""
     $icon = "$(Join-Path $InstallDir $ExeName),1"
     if ($testAssociations) {
-        foreach ($pair in @(@('.oxtstack', 'OXTBeyond.Stack'), @('.oxtscript', 'OXTBeyond.Script'))) {
+        foreach ($pair in @(@('.oxtstack', 'OpenXTalkLite.Stack'), @('.oxtscript', 'OpenXTalkLite.Script'))) {
             $ext = $pair[0]; $progId = $pair[1]
             $value = Get-RegValue $HKCU "Software\Classes\$ext" ''
             Add-Check "$ext opens as $progId" ($value -eq $progId) "$value"
@@ -411,7 +414,7 @@ try {
             $detail = $_.Exception.Message
         }
         $global:LASTEXITCODE = 0
-        Add-Check 'Smoke test of the installed OXT-Beyond.exe' ($failedCount -eq 0) $detail
+        Add-Check 'Smoke test of the installed OpenXTalk-Lite.exe' ($failedCount -eq 0) $detail
     }
 
     # --- Uninstall ---
@@ -446,10 +449,10 @@ try {
     if ($testDesktopLink -and (Test-Path -LiteralPath $desktopLink)) { $linksLeft += $desktopLink }
     Add-Check 'Shortcuts removed' ($linksLeft.Count -eq 0) ($linksLeft -join ', ')
     $assocLeft = @()
-    foreach ($key in @('Software\Classes\OXTBeyond.Stack', 'Software\Classes\OXTBeyond.Script', "Software\Classes\Applications\$ExeName")) {
+    foreach ($key in @('Software\Classes\OpenXTalkLite.Stack', 'Software\Classes\OpenXTalkLite.Script', "Software\Classes\Applications\$ExeName")) {
         if (Test-RegKey $HKCU $key) { $assocLeft += $key }
     }
-    foreach ($pair in @(@('.oxtstack', 'OXTBeyond.Stack'), @('.oxtscript', 'OXTBeyond.Script'))) {
+    foreach ($pair in @(@('.oxtstack', 'OpenXTalkLite.Stack'), @('.oxtscript', 'OpenXTalkLite.Script'))) {
         if ((Get-RegValue $HKCU "Software\Classes\$($pair[0])" '') -eq $pair[1]) { $assocLeft += "$($pair[0]) (default)" }
         if ($null -ne (Get-RegValue $HKCU "Software\Classes\$($pair[0])\OpenWithProgids" $pair[1])) { $assocLeft += "$($pair[0])\OpenWithProgids" }
     }

@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
-"""Check the standalone runtimes of an installed OXT-Beyond, and build
+"""Check the standalone runtimes of an installed OpenXTalk-Lite, and build
 standalones from them and run them.
 
   python tools/ci/standalone_check.py (--install DIR | --package FILE)
@@ -24,7 +24,7 @@ standalones from them and run them.
       [--platform P] [--log FILE] [--timeout SECONDS]
 
 --install is an installed layout, as for tools/ci/run_livecode_check.py
-(the folder that holds OXT-Beyond.app on macOS, the program folder on
+(the folder that holds OpenXTalk-Lite.app on macOS, the program folder on
 Windows and Linux), tested from a neutral path; --package extracts a
 package (the portable zip, the Linux tar.xz) to a temporary folder first.
 --platform names the layout (default: this machine's). --engine and
@@ -404,9 +404,9 @@ def deploy_and_run(engine, runtime, tp, work, timeout, expect_version):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Check the standalone runtimes of an installed OXT-Beyond, and build '
+    ap = argparse.ArgumentParser(description='Check the standalone runtimes of an installed OpenXTalk-Lite, and build '
                                              'standalones from them and run them.')
-    ap.add_argument('--install', metavar='DIR', help='installed layout (the folder that holds OXT-Beyond.app on '
+    ap.add_argument('--install', metavar='DIR', help='installed layout (the folder that holds OpenXTalk-Lite.app on '
                                                      'macOS, the program folder elsewhere)')
     ap.add_argument('--package', metavar='FILE', help='a package (the portable zip, the Linux tar.xz) to extract '
                                                       'and check like --install')

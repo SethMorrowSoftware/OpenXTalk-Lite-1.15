@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    Packages a Windows x86-64 build (win-x86_64-bin) of OXT-Beyond.
+    Packages a Windows x86-64 build (win-x86_64-bin) of OpenXTalk-Lite.
 
 .DESCRIPTION
     1. Runs tools/oxt/package.py, which writes the installed program folder
-       to <StageParent>\OXT-Beyond-<ver>\ (default <OutDir>\stage\...): the
+       to <StageParent>\OpenXTalk-Lite-<ver>\ (default <OutDir>\stage\...): the
        IDE from ide\ and ide-support\, the build outputs at their installed
-       paths (the development engine as OXT-Beyond.exe), the external assets
+       paths (the development engine as OpenXTalk-Lite.exe), the external assets
        of tools/oxt/external-assets.json, the xTalk Suite extensions of
        tools/oxt/xtalk-extensions.json (fetched from their repositories at
        the pinned commits and built with this build's lc-compile by
@@ -14,7 +14,7 @@
        product version in ide\.version.
 
        enetxt.dll and box2dxt.dll import the Visual C++ runtime, which the
-       OXT-Beyond engine does not ship. The runtime DLLs are copied next to
+       OpenXTalk-Lite engine does not ship. The runtime DLLs are copied next to
        them from Visual Studio's redistributable folder (-VcRedist, else
        the one of VCToolsRedistDir and the Visual Studio installs vswhere
        finds that has the runtime pinned in tools/oxt/xtalk-extensions.json);
@@ -25,18 +25,18 @@
 
     2. Writes to OutDir (default <RepoRoot>\dist):
 
-      OXT-Beyond-<ver>-win-x86_64-portable.zip
-          The staged program folder under one top folder OXT-Beyond-<ver>\.
-          Extract it anywhere and run OXT-Beyond.exe.
+      OpenXTalk-Lite-<ver>-win-x86_64-portable.zip
+          The staged program folder under one top folder OpenXTalk-Lite-<ver>\.
+          Extract it anywhere and run OpenXTalk-Lite.exe.
 
-      OXT-Beyond-<ver>-win-x86_64-binaries.zip
+      OpenXTalk-Lite-<ver>-win-x86_64-binaries.zip
           win-x86_64-bin\ without *.pdb, plus the licence files. Extracting it
           into the root of a source checkout gives the same layout as a build.
 
-      OXT-Beyond-<ver>-win-x86_64-symbols.zip
+      OpenXTalk-Lite-<ver>-win-x86_64-symbols.zip
           The *.pdb files, under win-x86_64-bin\ with their relative paths.
 
-      OXT-Beyond-<ver>-xtalk-sources.zip (only with -XtalkSourcesZip)
+      OpenXTalk-Lite-<ver>-xtalk-sources.zip (only with -XtalkSourcesZip)
           Every file of the xTalk Suite extensions that
           tools/oxt/xtalk-extensions.json pins, in the layout of their
           download cache, with a copy of the manifest
@@ -55,7 +55,7 @@
 
     Under GitHub Actions the step outputs are: version and product-version
     (ide\.version), build-number, engine-version (BUILD_SHORT_VERSION),
-    package-root (OXT-Beyond-<ver>), stage-dir (full path of the staged
+    package-root (OpenXTalk-Lite-<ver>), stage-dir (full path of the staged
     program folder), dist-dir and portable-zip.
 
     Written to run under Windows PowerShell 5.1 and PowerShell 7.
@@ -71,7 +71,7 @@
     the same names are replaced; other files are left alone.
 
 .PARAMETER StageParent
-    Folder in which package.py creates OXT-Beyond-<ver>\ (an existing folder
+    Folder in which package.py creates OpenXTalk-Lite-<ver>\ (an existing folder
     of that name is replaced). Default: <OutDir>\stage.
 
 .PARAMETER BuildNumber
@@ -93,11 +93,11 @@
 .PARAMETER XtalkCache
     Download cache of the xTalk Suite extensions' files. Default: the
     environment variable OXT_XTALK_CACHE, else <AssetsCache>\xtalk. A
-    folder extracted from a release's OXT-Beyond-<ver>-xtalk-sources.zip
+    folder extracted from a release's OpenXTalk-Lite-<ver>-xtalk-sources.zip
     holds every file that release pinned, so nothing is downloaded.
 
 .PARAMETER XtalkSourcesZip
-    Also write OXT-Beyond-<ver>-xtalk-sources.zip (see above) to OutDir
+    Also write OpenXTalk-Lite-<ver>-xtalk-sources.zip (see above) to OutDir
     and list it in SHA256SUMS. CI sets it for tag builds.
 
 .PARAMETER VcRedist
@@ -158,7 +158,7 @@ if (-not ('System.IO.Compression.ZipFileExtensions' -as [type])) {
 
 $Platform = 'win-x86_64'
 $BinName = "$Platform-bin"
-$Product = 'OXT-Beyond'
+$Product = 'OpenXTalk-Lite'
 $ExeName = "$Product.exe"
 $LicenseFiles = @('LICENSE', 'LICENSE-EXCEPTION.md', 'THIRD-PARTY-NOTICES.md')
 

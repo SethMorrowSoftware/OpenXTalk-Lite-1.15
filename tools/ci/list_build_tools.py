@@ -26,7 +26,7 @@ it (tools/oxt/package.py BUILD_PROGRAMS: gentle-target and
 reflex-target, which are GENTLE 97, whose licence forbids redistributing
 it (THIRD-PARTY-NOTICES.md "GENTLE"); perfect-target, the lc-compile
 bootstrap stages, zic and lcidlc), with their .dbg files or .dSYM
-bundles. The CI artifacts of the build (OXT-Beyond-<platform>-bin and
+bundles. The CI artifacts of the build (OpenXTalk-Lite-<platform>-bin and
 -symbols) are downloadable, so they must not carry GENTLE either; nothing
 that uses those artifacts needs any of these tools (package.py never
 installs them, and package_dist.py leaves them out of the binaries and

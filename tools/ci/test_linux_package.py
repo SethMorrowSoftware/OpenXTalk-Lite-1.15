@@ -16,15 +16,15 @@
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
 """Test the launcher and the per-user install of an extracted Linux package
-of OXT-Beyond (Installer/linux, staged by tools/oxt/package.py).
+of OpenXTalk-Lite (Installer/linux, staged by tools/oxt/package.py).
 
-  python tools/ci/test_linux_package.py --root <OXT-Beyond-<version> folder>
+  python tools/ci/test_linux_package.py --root <OpenXTalk-Lite-<version> folder>
       [--launcher] [--install] [--work DIR] [--require-desktop-tools]
 
 With neither --launcher nor --install, both run. <root> must be the
 package as users get it (extracted from the tar.xz), in a neutral path.
 
---launcher runs a copy of the launcher (oxt-beyond) in a scratch folder
+--launcher runs a copy of the launcher (openxtalk-lite) in a scratch folder
 next to a stand-in engine, a shell script that prints its arguments and
 LIVECODE_USE_CEF, and a library list that is the package's plus, per case,
 a library no system has:
@@ -64,17 +64,17 @@ removing. Each time it checks that
     Entry Specification; desktop-file-validate passes when it is there),
     the eight icons, the MIME types (and, with update-mime-database and
     update-desktop-database, the compiled types and the mimeinfo.cache
-    entry), and ~/.local/bin/oxt-beyond -> the launcher;
+    entry), and ~/.local/bin/openxtalk-lite -> the launcher;
   - the installed engine runs a script without a user interface through
     that link and reports the installed folder as its own;
   - install.sh again, and the installed copy's install.sh, leave the same
     files;
   - uninstall.sh leaves exactly the files and folders that were there
     before install.sh, and files that install.sh did not make (a
-    ~/.local/bin/oxt-beyond of the user's) stay untouched;
+    ~/.local/bin/openxtalk-lite of the user's) stay untouched;
   - install.sh refuses a program folder it did not install.
 
-It also checks that a ~/.local/bin/oxt-beyond that the user put in place of
+It also checks that a ~/.local/bin/openxtalk-lite that the user put in place of
 install.sh's link (a wrapper script, or a link to something else) survives
 install.sh again and uninstall.sh; and that an install that fails after
 the program folder is in place (at a dangling ~/.local/bin link; an update
@@ -120,7 +120,7 @@ exit 0
 '''
 
 # Another program's MIME type, of the application/ media type only: the
-# text/ folder of OXT-Beyond's text/x-oxtscript is then new
+# text/ folder of OpenXTalk-Lite's text/x-oxtscript is then new
 OTHER_MIME = '''<?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/x-oxt-test-other">
@@ -219,9 +219,9 @@ def test_launcher(c, root, work):
     os.makedirs(os.path.join(app, 'linux'))
     os.makedirs(os.path.join(app, 'Externals', 'CEF'))
     os.makedirs(os.path.join(base, 'bin'))
-    launcher = os.path.join(app, 'oxt-beyond')
-    shutil.copy2(os.path.join(root, 'oxt-beyond'), launcher)
-    engine = os.path.join(app, 'OXT-Beyond')
+    launcher = os.path.join(app, 'openxtalk-lite')
+    shutil.copy2(os.path.join(root, 'openxtalk-lite'), launcher)
+    engine = os.path.join(app, 'OpenXTalk-Lite')
     with open(engine, 'w', encoding='utf-8', newline='\n') as f:
         f.write(FAKE_ENGINE)
     os.chmod(engine, 0o755)
@@ -229,7 +229,7 @@ def test_launcher(c, root, work):
         real_list = f.read()
     cef = os.path.join(app, 'Externals', 'CEF', 'libcef.so')
     open(cef, 'wb').close()
-    link = os.path.join(base, 'bin', 'oxt-beyond')
+    link = os.path.join(base, 'bin', 'openxtalk-lite')
     os.symlink(launcher, link)
 
     def with_list(extra):
@@ -278,7 +278,7 @@ def test_launcher(c, root, work):
     os.chmod(engine, 0o644)
     code, out = run([link], env=base_env())
     c.check('launcher: an engine that is not executable is an error that names it',
-            code != 0 and 'OXT-Beyond' in out and 'ENGINE RAN' not in out, 'exit %d, output:\n%s' % (code, out))
+            code != 0 and 'OpenXTalk-Lite' in out and 'ENGINE RAN' not in out, 'exit %d, output:\n%s' % (code, out))
 
     # Started from a menu (no terminal, a display), the launcher shows the
     # message with zenity. zenity reads --text as Pango markup unless told
@@ -301,8 +301,8 @@ def test_launcher(c, root, work):
             code != 0 and '--no-markup' in args and text is not None and '<version>' in text and text in out,
             'exit %d, zenity arguments %r, output:\n%s' % (code, args, out))
 
-    # On FAT, exFAT or a Windows drive, tar writes the launcher oxt-beyond
-    # over the engine OXT-Beyond, extracted just before it: the engine's
+    # On FAT, exFAT or a Windows drive, tar writes the launcher openxtalk-lite
+    # over the engine OpenXTalk-Lite, extracted just before it: the engine's
     # path is then the launcher, which would exec itself for ever
     os.remove(engine)
     os.link(launcher, engine)
@@ -390,7 +390,7 @@ def test_install_setup(c, root, work, label, xdg, required, prepare=None):
         env['XDG_DATA_HOME'] = xdg
         os.makedirs(xdg, exist_ok=True)
     data = xdg if xdg is not None else os.path.join(home, '.local', 'share')
-    app = os.path.join(data, 'oxt-beyond')
+    app = os.path.join(data, 'openxtalk-lite')
     watch = [home] + ([xdg] if xdg is not None else [])
     name = 'install (%s)' % label
     if prepare is not None:
@@ -404,17 +404,17 @@ def test_install_setup(c, root, work, label, xdg, required, prepare=None):
         return
     manifest = os.path.join(app, '.install-manifest')
     c.check('%s: the program folder with its manifest' % name,
-            os.path.isfile(os.path.join(app, 'OXT-Beyond')) and os.access(os.path.join(app, 'OXT-Beyond'), os.X_OK)
+            os.path.isfile(os.path.join(app, 'OpenXTalk-Lite')) and os.access(os.path.join(app, 'OpenXTalk-Lite'), os.X_OK)
             and os.path.isfile(manifest), app)
     same = run(['diff', '-rq', '--no-dereference', root, app])
     c.check('%s: the program folder is a copy of the package (plus the manifest)' % name,
             [x for x in same[1].splitlines() if not x.startswith('Only in %s: .install-manifest' % app)] == [],
             same[1][-2000:])
     modes_ok = all(stat.S_IMODE(os.stat(os.path.join(app, f)).st_mode) == 0o755
-                   for f in ('OXT-Beyond', 'oxt-beyond', 'install.sh', 'uninstall.sh'))
+                   for f in ('OpenXTalk-Lite', 'openxtalk-lite', 'install.sh', 'uninstall.sh'))
     c.check('%s: the engine and the scripts keep mode 0755' % name, modes_ok)
-    desktop = os.path.join(data, 'applications', 'oxt-beyond.desktop')
-    launcher = os.path.join(app, 'oxt-beyond')
+    desktop = os.path.join(data, 'applications', 'openxtalk-lite.desktop')
+    launcher = os.path.join(app, 'openxtalk-lite')
     exec_line = None
     if c.check('%s: the desktop entry' % name, os.path.isfile(desktop), desktop):
         with open(desktop, encoding='utf-8') as f:
@@ -433,10 +433,10 @@ def test_install_setup(c, root, work, label, xdg, required, prepare=None):
             code, vout = run([validate, desktop])
             c.check('%s: desktop-file-validate passes (no errors or warnings)' % name,
                     code == 0 and 'error:' not in vout and 'warning:' not in vout, vout.strip() or 'no output')
-    icons = [os.path.join(data, 'icons', 'hicolor', '%dx%d' % (n, n), 'apps', 'oxt-beyond.png') for n in ICON_SIZES]
+    icons = [os.path.join(data, 'icons', 'hicolor', '%dx%d' % (n, n), 'apps', 'openxtalk-lite.png') for n in ICON_SIZES]
     c.check('%s: the icons 16 to 512 px' % name, all(os.path.isfile(i) for i in icons),
             ', '.join(i for i in icons if not os.path.isfile(i)))
-    c.check('%s: the MIME types' % name, os.path.isfile(os.path.join(data, 'mime', 'packages', 'oxt-beyond.xml')))
+    c.check('%s: the MIME types' % name, os.path.isfile(os.path.join(data, 'mime', 'packages', 'openxtalk-lite.xml')))
     if tool('update-mime-database', required, c):
         c.check('%s: update-mime-database compiled the two types' % name,
                 os.path.isfile(os.path.join(data, 'mime', 'application', 'x-oxtstack.xml')) and
@@ -444,10 +444,10 @@ def test_install_setup(c, root, work, label, xdg, required, prepare=None):
     if tool('update-desktop-database', required, c):
         cache = os.path.join(data, 'applications', 'mimeinfo.cache')
         text = open(cache, encoding='utf-8').read() if os.path.isfile(cache) else ''
-        c.check('%s: mimeinfo.cache opens .oxtstack with OXT-Beyond' % name,
-                'application/x-oxtstack=oxt-beyond.desktop;' in text, cache)
-    link = os.path.join(home, '.local', 'bin', 'oxt-beyond')
-    c.check('%s: ~/.local/bin/oxt-beyond links to the launcher' % name,
+        c.check('%s: mimeinfo.cache opens .oxtstack with OpenXTalk-Lite' % name,
+                'application/x-oxtstack=openxtalk-lite.desktop;' in text, cache)
+    link = os.path.join(home, '.local', 'bin', 'openxtalk-lite')
+    c.check('%s: ~/.local/bin/openxtalk-lite links to the launcher' % name,
             os.path.islink(link) and os.readlink(link) == launcher, link)
 
     # The installed engine, through the link, without a user interface
@@ -456,7 +456,7 @@ def test_install_setup(c, root, work, label, xdg, required, prepare=None):
         f.write(PROBE)
     code, out = run([link, '-ui', probe], env=env, cwd=home, timeout=120)
     reported = next((x[len('ENGINE '):] for x in out.splitlines() if x.startswith('ENGINE ')), None)
-    c.check('%s: the installed engine runs through ~/.local/bin/oxt-beyond and reports its folder' % name,
+    c.check('%s: the installed engine runs through ~/.local/bin/openxtalk-lite and reports its folder' % name,
             code == 0 and reported is not None and os.path.realpath(reported) == os.path.realpath(app),
             'exit %d, engine folder %r, output:\n%s' % (code, reported, out))
 
@@ -486,15 +486,15 @@ def test_install_guards(c, root, work, required):
     home = os.path.join(work, 'home-guards')
     bindir = os.path.join(home, '.local', 'bin')
     os.makedirs(bindir)
-    mine = os.path.join(bindir, 'oxt-beyond')
+    mine = os.path.join(bindir, 'openxtalk-lite')
     with open(mine, 'w') as f:
         f.write('#!/bin/sh\necho mine\n')
     env = base_env(HOME=home)
     before = snapshot(home)
     code, out = run([os.path.join(root, 'install.sh')], env=env)
-    c.check('guards: install.sh leaves a ~/.local/bin/oxt-beyond of the user\'s alone, with a warning',
+    c.check('guards: install.sh leaves a ~/.local/bin/openxtalk-lite of the user\'s alone, with a warning',
             code == 0 and 'left as it is' in out and not os.path.islink(mine), 'exit %d, output:\n%s' % (code, out))
-    app = os.path.join(home, '.local', 'share', 'oxt-beyond')
+    app = os.path.join(home, '.local', 'share', 'openxtalk-lite')
     code, out = run([os.path.join(app, 'uninstall.sh')], env=env)
     c.check('guards: uninstall.sh keeps it too, and removes the rest',
             code == 0 and snapshot(home) == before, 'exit %d; %s\n%s' % (code, describe_diff(before, snapshot(home)),
@@ -511,7 +511,7 @@ def test_install_guards(c, root, work, required):
 
 
 def test_install_own_command(c, root, work):
-    """A ~/.local/bin/oxt-beyond that the user put in place of install.sh's
+    """A ~/.local/bin/openxtalk-lite that the user put in place of install.sh's
     link after an install (a wrapper script that sets GDK_SCALE for a HiDPI
     screen, or a link to something else) is theirs, although the manifest
     names the path: install.sh again and uninstall.sh leave it as it is."""
@@ -520,23 +520,23 @@ def test_install_own_command(c, root, work):
         os.makedirs(home)
         env = base_env(HOME=home)
         before = snapshot(home)
-        app = os.path.join(home, '.local', 'share', 'oxt-beyond')
-        command = os.path.join(home, '.local', 'bin', 'oxt-beyond')
+        app = os.path.join(home, '.local', 'share', 'openxtalk-lite')
+        command = os.path.join(home, '.local', 'bin', 'openxtalk-lite')
         name = 'own command (%s)' % kind
         code, out = run([os.path.join(root, 'install.sh')], env=env)
-        if not c.check('%s: install.sh succeeds and links ~/.local/bin/oxt-beyond' % name,
+        if not c.check('%s: install.sh succeeds and links ~/.local/bin/openxtalk-lite' % name,
                        code == 0 and os.path.islink(command), 'exit %d, output:\n%s' % (code, out)):
             continue
         os.remove(command)
         if kind == 'wrapper':
-            wrapper = '#!/bin/sh\nGDK_SCALE=2 exec "%s" "$@"\n' % os.path.join(app, 'oxt-beyond')
+            wrapper = '#!/bin/sh\nGDK_SCALE=2 exec "%s" "$@"\n' % os.path.join(app, 'openxtalk-lite')
             with open(command, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(wrapper)
             os.chmod(command, 0o755)
-            mine = {'.local/', '.local/bin/', '.local/bin/oxt-beyond'}
+            mine = {'.local/', '.local/bin/', '.local/bin/openxtalk-lite'}
         else:
             os.symlink('/usr/bin/true', command)
-            mine = {'.local/', '.local/bin/', '.local/bin/oxt-beyond -> /usr/bin/true'}
+            mine = {'.local/', '.local/bin/', '.local/bin/openxtalk-lite -> /usr/bin/true'}
 
         def unchanged():
             if kind == 'wrapper':
@@ -570,7 +570,7 @@ def test_install_failure(c, root, work):
     binfolder = os.path.join(home, 'bin-folder')
     os.symlink(binfolder, os.path.join(local, 'bin'))    # dangling until bin-folder exists
     env = base_env(HOME=home)
-    app = os.path.join(local, 'share', 'oxt-beyond')
+    app = os.path.join(local, 'share', 'openxtalk-lite')
     manifest = os.path.join(app, '.install-manifest')
     install = os.path.join(root, 'install.sh')
     before = snapshot(home)
@@ -590,13 +590,13 @@ def test_install_failure(c, root, work):
     fixed = before | {'bin-folder/'}
     code, out = run([install], env=env)
     c.check('failure: with the link fixed, install.sh takes over what the failed one made, without warnings',
-            code == 0 and 'warning' not in out and os.path.islink(os.path.join(binfolder, 'oxt-beyond')),
+            code == 0 and 'warning' not in out and os.path.islink(os.path.join(binfolder, 'openxtalk-lite')),
             'exit %d, output:\n%s' % (code, out))
 
     # An update that fails: the desktop entry can be neither removed nor
     # written
     apps = os.path.join(local, 'share', 'applications')
-    desktop = os.path.join(apps, 'oxt-beyond.desktop')
+    desktop = os.path.join(apps, 'openxtalk-lite.desktop')
     os.chmod(desktop, 0o444)
     os.chmod(apps, 0o555)
     try:
@@ -613,8 +613,8 @@ def test_install_failure(c, root, work):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Test the launcher and install scripts of a Linux OXT-Beyond package.')
-    ap.add_argument('--root', required=True, help='the extracted package folder (OXT-Beyond-<version>)')
+    ap = argparse.ArgumentParser(description='Test the launcher and install scripts of a Linux OpenXTalk-Lite package.')
+    ap.add_argument('--root', required=True, help='the extracted package folder (OpenXTalk-Lite-<version>)')
     ap.add_argument('--launcher', action='store_true', help='test the launcher')
     ap.add_argument('--install', action='store_true', help='test install.sh and uninstall.sh')
     ap.add_argument('--work', help='scratch folder (default: a new temporary one)')
@@ -622,7 +622,7 @@ def main(argv=None):
                     help='fail when desktop-file-validate, update-mime-database or update-desktop-database is missing')
     args = ap.parse_args(argv)
     root = os.path.realpath(args.root)
-    for f in ('OXT-Beyond', 'oxt-beyond', 'install.sh', 'uninstall.sh', 'linux/libraries.txt'):
+    for f in ('OpenXTalk-Lite', 'openxtalk-lite', 'install.sh', 'uninstall.sh', 'linux/libraries.txt'):
         if not os.path.exists(os.path.join(root, f)):
             sys.stderr.write('error: %s has no %s: not an extracted Linux package\n' % (root, f))
             return 2

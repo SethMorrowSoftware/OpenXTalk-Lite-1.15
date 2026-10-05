@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Checks that every Windows DLL of the extensions in an installed
-    OXT-Beyond layout finds the DLLs it imports.
+    OpenXTalk-Lite layout finds the DLLs it imports.
 
 .DESCRIPTION
     Reads the import table and the delay-load import table of every DLL in

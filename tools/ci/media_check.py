@@ -16,7 +16,7 @@
 # along with OXT-Beyond.  If not see <http://www.gnu.org/licenses/>.
 
 """Check that the browser widget, revBrowser and the player work in a
-standalone of an installed OXT-Beyond, with a user interface.
+standalone of an installed OpenXTalk-Lite, with a user interface.
 
   python tools/ci/media_check.py (--install DIR | --package FILE)
       [--platform P] [--what widget,revbrowser,player] [--log FILE]
@@ -186,7 +186,7 @@ def windows_sound_devices():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Check the browser widget, revBrowser and the player in a standalone '
-                                             'of an installed OXT-Beyond.')
+                                             'of an installed OpenXTalk-Lite.')
     ap.add_argument('--install', metavar='DIR', help='installed layout')
     ap.add_argument('--package', metavar='FILE', help='a package to extract and check like --install')
     ap.add_argument('--platform', choices=list(package.PLATFORMS),

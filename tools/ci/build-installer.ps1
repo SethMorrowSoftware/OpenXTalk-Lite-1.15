@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    Builds the OXT-Beyond Windows installer with Inno Setup 6.
+    Builds the OpenXTalk Lite 1.15 Windows installer with Inno Setup 6.
 
 .DESCRIPTION
-    Compiles Installer\oxt-beyond\oxt-beyond.iss over a staged installed
+    Compiles Installer\openxtalk-lite\openxtalk-lite.iss over a staged installed
     layout (written by tools/oxt/package.py, normally through
     tools/ci/package-windows.ps1) into
 
-      <OutDir>\OXT-Beyond-<version>-win-x86_64-setup.exe
+      <OutDir>\OpenXTalk-Lite-<version>-win-x86_64-setup.exe
 
     and then rewrites <OutDir>\SHA256SUMS over all files in OutDir
     ("<sha256>  <file name>", LF line endings, sorted by name).
@@ -17,16 +17,14 @@
     for Inno Setup 7. When it is not found, Inno Setup is installed with
     "choco install innosetup -y --no-progress" (unless -NoInstall is given).
 
-    The wizard images are made from the OXT-Beyond icon art by
-    Installer\oxt-beyond\make-wizard-images.ps1 into a temporary folder, which
-    is deleted afterwards; nothing is written into the repository except
-    OutDir. The full compiler output goes to -LogFile.
+    The wizard uses Inno Setup's built-in images. Nothing is written into
+    the repository except OutDir. The full compiler output goes to -LogFile.
 
     Written to run under Windows PowerShell 5.1 and PowerShell 7.
 
 .PARAMETER Stage
     The staged installed layout. Default:
-    <OutDir>\stage\OXT-Beyond-<version>.
+    <OutDir>\stage\OpenXTalk-Lite-<version>.
 
 .PARAMETER OutDir
     Where the setup program is written and SHA256SUMS is rewritten.
@@ -49,9 +47,6 @@
 .PARAMETER NoInstall
     Fail instead of installing Inno Setup when ISCC.exe is not found.
 
-.PARAMETER NoWizardImages
-    Use Inno Setup's built-in wizard images.
-
 .PARAMETER LogFile
     Compiler output. Default: <RUNNER_TEMP>\build-logs\installer\iscc.log under
     GitHub Actions, otherwise iscc.log in a temporary folder (printed).
@@ -65,20 +60,19 @@ param(
     [string]$BuildNumber,
     [string]$Iscc,
     [switch]$NoInstall,
-    [switch]$NoWizardImages,
     [string]$LogFile
 )
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
-$ProductName = 'OXT-Beyond'
+$ProductName = 'OpenXTalk-Lite'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
 # --- Arguments ---
 if (-not $RepoRoot) { $RepoRoot = Join-Path $PSScriptRoot '..\..' }
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).ProviderPath.TrimEnd('\')
-$script = Join-Path $RepoRoot 'Installer\oxt-beyond\oxt-beyond.iss'
+$script = Join-Path $RepoRoot 'Installer\openxtalk-lite\openxtalk-lite.iss'
 if (-not (Test-Path -LiteralPath $script -PathType Leaf)) { throw "Installer script not found: $script" }
 
 if (-not $Version) {
@@ -132,7 +126,7 @@ if (-not $BuildNumber) {
 if ($BuildNumber -notmatch '^\d+$') { throw "Build number '$BuildNumber' is missing or not a number." }
 
 $runnerTemp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
-$workDir = Join-Path $runnerTemp ('oxtb-installer-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$workDir = Join-Path $runnerTemp ('oxtl-installer-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 if (-not $LogFile) {
     if ($env:RUNNER_TEMP) {
         $LogFile = Join-Path $env:RUNNER_TEMP 'build-logs\installer\iscc.log'
@@ -226,15 +220,6 @@ try {
         OutputDir   = $OutDir
         RepoRoot    = $RepoRoot
     }
-    if (-not $NoWizardImages) {
-        $images = & (Join-Path $RepoRoot 'Installer\oxt-beyond\make-wizard-images.ps1') -OutDir (Join-Path $workDir 'wizard') -RepoRoot $RepoRoot
-        $images = @($images)[-1]
-        if (-not $images.WizardImageFile -or -not $images.WizardSmallImageFile) { throw 'make-wizard-images.ps1 returned no images.' }
-        if ($images.Placeholder) { Write-Warning 'The installer uses placeholder wizard images (no OXT-Beyond art found).' }
-        $defines['WizardImageFile'] = $images.WizardImageFile
-        $defines['WizardSmallImageFile'] = $images.WizardSmallImageFile
-    }
-
     # Paths have no trailing backslash, so the quoting that PowerShell adds
     # around arguments with spaces cannot be escaped by one
     $isccArgs = @()
@@ -281,9 +266,6 @@ try {
     if ((Get-Item -LiteralPath $setupPath).LastWriteTime -lt $started.AddSeconds(-5)) { throw "$setupPath is older than this build" }
 }
 finally {
-    if (Test-Path -LiteralPath (Join-Path $workDir 'wizard')) {
-        Remove-Item -LiteralPath (Join-Path $workDir 'wizard') -Recurse -Force -ErrorAction SilentlyContinue
-    }
     # Keep the work folder only when it holds the log
     if (-not ($LogFile.StartsWith($workDir + '\', [System.StringComparison]::OrdinalIgnoreCase))) {
         Remove-Item -LiteralPath $workDir -Recurse -Force -ErrorAction SilentlyContinue

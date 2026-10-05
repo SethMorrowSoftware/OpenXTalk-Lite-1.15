@@ -1,3 +1,31 @@
+> **In this repository.** This document comes from
+> [OXT-Beyond](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond), whose
+> packaging tools were imported here, and describes them as they are there.
+> Here they package Tom Perry's OpenXTalk Lite 1.15 as it is, so:
+>
+> - The product is **OpenXTalk Lite**: `package.py`'s `PRODUCT` is
+>   `OpenXTalk-Lite`, so the Windows engine is `OpenXTalk-Lite.exe` (the name
+>   OpenXTalk Lite 1.15 itself uses), the macOS app `OpenXTalk-Lite.app` (the
+>   name in Tom Perry's macOS build scripts), the Linux engine and launcher
+>   `OpenXTalk-Lite` and `openxtalk-lite`, and the stage folder and archives
+>   `OpenXTalk-Lite-<ide/.version>`. The macOS bundle id is
+>   `io.github.sethmorrowsoftware.openxtalk-lite`.
+> - The icons are Tom Perry's: the macOS app takes
+>   `Installer/openxtalk-lite/branding/OpenXTalk-Lite.icns` unchanged, the
+>   Linux package the PNGs made from `ide/OpenXTalk-lite_1024.ico` (see
+>   `Installer/openxtalk-lite/branding/README.md`), and the Windows
+>   installer that `.ico`. OXT-Beyond's artwork, `ico.py`, the IDE stack
+>   patching tools and `dark_disabled_icons.py` are not here.
+> - The only licence file packaged is `LICENSE` (LiveCode Community's, with
+>   LiveCode Ltd's permission for OpenSSL and ATL at its top).
+> - The external asset is `oxt-runtimes-1.15`, the standalone runtimes of
+>   OpenXTalk Lite 1.15 unchanged, and the xTalk Suite extensions are never
+>   packaged (CI passes `--no-xtalk-extensions`; `xtalk_extensions.py` stays
+>   because `package.py` imports it).
+> - `Toolset/palettes/standalone settings/mac-arm-deploy.oxtstack` is an IDE
+>   file, as OpenXTalk Lite 1.15 ships it; OXT-Beyond removed it and classes
+>   it as junk.
+
 # OXT layout and packaging tools
 
 These tools need only Python 3 (standard library, 3.8 or later: the Linux
