@@ -203,10 +203,35 @@ function TestBuildErrorMap pErrorFile, pErrorPrefix, pZerothError
    local tSource
    put textDecode(url("binfile:" & tSourceFile), "utf-8") into tSource
    
+   -- The file may hold both of Tom Perry's versions (CHANGES-FROM-TOM.md,
+   -- section 1): keep the lines of this platform's version, as the
+   -- compiler and util/encode_errors.pl do
+   local tMacOS, tRegion, tMarker
+   put the platform is "MacOS" into tMacOS
+
    local tErrorMap, tCode
    repeat for each line tLine in tSource
+      put tLine into tMarker
+      if the last char of tMarker is numToCodepoint(13) then
+         delete the last char of tMarker
+      end if
+      switch tMarker
+         case "#if defined(_MACOSX) /* OXT-TOM: macOS */"
+            put "mac" into tRegion
+            next repeat
+         case "#if !defined(_MACOSX) /* OXT-TOM: Windows */"
+         case "#else /* OXT-TOM: Windows */"
+            put "win" into tRegion
+            next repeat
+         case "#endif /* OXT-TOM */"
+            put empty into tRegion
+            next repeat
+      end switch
+      if tRegion is "mac" and not tMacOS then next repeat
+      if tRegion is "win" and tMacOS then next repeat
+
       if tLine is empty then next repeat
-      if word 1 of tLine begins with pErrorPrefix & "_" & pZerothError then 
+      if word 1 of tLine begins with pErrorPrefix & "_" & pZerothError then
          next repeat
       end if
       

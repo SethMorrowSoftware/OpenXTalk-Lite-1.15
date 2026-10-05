@@ -463,6 +463,12 @@ tests that check errors failed in dozens).
   messages and keywords are then exactly those of his file for that
   platform.
 - `engine/kernel-mode-template.gypi`: passes `<(OS)` to both.
+- `tests/_testlib.livecodescript` (the test harness, not his): its
+  `TestBuildErrorMap`, which the engine, parser and standalone tests use
+  to name error codes, reads `executionerrors.h` and `parseerrors.h` the
+  same way, so it keeps only the running platform's version too (macOS
+  or the Windows one). With both, it stopped at the first duplicate code
+  and every test that checks an error failed.
 
 ### macOS: the standalone and installer engines link without respring.cpp
 
