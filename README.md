@@ -102,10 +102,14 @@ IDE colours, contrast and render tests) are not here.
 ### Test baselines
 
 Every check compares its failures with a baseline:
-`tools/ci/engine-tests-baseline*.txt` for the engine test suites and
-`tools/ci/ide-compile-baseline*.txt` for the IDE compile check. A failure
-not in the baseline fails the job; a baseline entry that starts passing is
-reported, so it can be removed.
+`tools/ci/engine-tests-baseline*.txt` for the engine test suites,
+`tools/ci/ide-compile-baseline*.txt` for the IDE compile check,
+`tools/ci/standalone-baseline.txt` for the standalone check (faults of
+OpenXTalk Lite 1.15's own runtimes) and, for the browser and player
+check, the `KNOWN` tables of `tools/ci/media_check.py` (what a platform's
+player cannot play, such as Tom Perry's Linux player, which runs none of
+mplayer's commands). A failure not in the baseline fails the job; a
+baseline entry that starts passing is reported, so it can be removed.
 
 Here a baseline line records how Tom Perry's code behaves: a bug or a
 limitation of OpenXTalk Lite 1.15 or of the LiveCode Community 9.7 code
