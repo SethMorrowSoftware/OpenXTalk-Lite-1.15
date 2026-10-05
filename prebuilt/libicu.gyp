@@ -306,7 +306,7 @@
 					],
 					'action':
 					[
-						'python2',
+						'python',
 						'../util/remove_matching.py',
 						'<(INTERMEDIATE_DIR)/data/icudata-full-list.txt',
 						'rsrc/icudata-minimal-list.txt',
