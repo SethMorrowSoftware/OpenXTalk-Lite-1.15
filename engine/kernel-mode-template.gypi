@@ -66,6 +66,7 @@
 				'../util/encode_errors.pl',
 				'./src',
 				'<@(_outputs)',
+				'<(OS)',
 			],
 		},
 		{
@@ -90,6 +91,7 @@
 				'./src/lextable.cpp',
 				'<@(_outputs)',
 				'>(perfect_path)',
+				'<(OS)',
 			],
 		},
 	],

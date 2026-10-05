@@ -4,15 +4,43 @@ use warnings;
 use File::Basename;
 use File::Temp qw(tempfile);
 
+# OpenXTalk Lite 1.15: a source file that holds both of Tom Perry's
+# versions (his macOS one and his Windows one, see CHANGES-FROM-TOM.md)
+# marks the regions where they differ. The compiler takes one version
+# through #if defined(_MACOSX); this script reads the file as text, so it
+# keeps the lines of the version for the platform being built: gyp's OS,
+# "mac" for macOS, any other value (or none) for the Windows version.
+sub selectPlatformLines
+{
+	my ($platform, @lines) = @_;
+	my $macos = defined($platform) && $platform eq 'mac';
+	my @out = ();
+	my $state = '';
+	foreach my $line (@lines)
+	{
+		my $text = $line;
+		$text =~ s/[\r\n]+$//;
+		if ($text eq '#if defined(_MACOSX) /* OXT-TOM: macOS */') { $state = 'mac'; next; }
+		if ($text eq '#if !defined(_MACOSX) /* OXT-TOM: Windows */') { $state = 'win'; next; }
+		if ($text eq '#else /* OXT-TOM: Windows */') { $state = 'win'; next; }
+		if ($text eq '#endif /* OXT-TOM */') { $state = ''; next; }
+		next if ($state eq 'mac' && !$macos);
+		next if ($state eq 'win' && $macos);
+		push @out, $line;
+	}
+	return @out;
+}
+
 # Arguments
 my $sourceFile = $ARGV[0];
 my $targetFile = $ARGV[1];
 my $perfectCmd = $ARGV[2];
+my $platform = $ARGV[3];
 
 # Get the input
 open SOURCE, "<$sourceFile"
 	or die "Could not open source file \"$sourceFile\": $!";
-my @sourceLines = <SOURCE>;
+my @sourceLines = selectPlatformLines($platform, <SOURCE>);
 close SOURCE;
 
 # List of tokens

@@ -446,6 +446,24 @@ script now runs under Python 2 and 3.
 
 - `prebuilt/libicu.gyp`: `python` again. The file is LiveCode's again.
 
+### Build scripts read the per-platform files as the compiler does
+
+Why: two of LiveCode's build scripts read engine sources as text, not
+through the preprocessor: `encode_errors.pl` takes the error messages
+from the comments of `executionerrors.h` and `parseerrors.h`, and
+`hash_strings.pl` the keywords of `lextable.cpp`. These three hold both
+of Tom Perry's versions (section 1), so the scripts read both: every
+platform got his macOS tree's extra macSetIcon error and keyword, and
+every execution error after it the message of the one before (the engine
+tests that check errors failed in dozens).
+
+- `util/encode_errors.pl`, `util/hash_strings.pl`: keep only the lines of
+  the version for the platform being built (gyp's OS: "mac" for macOS,
+  anything else for the Windows version), skipping the marker lines. The
+  messages and keywords are then exactly those of his file for that
+  platform.
+- `engine/kernel-mode-template.gypi`: passes `<(OS)` to both.
+
 ### Import the CI, tests and packaging tools of OXT-Beyond
 
 Why: the tests, and the line endings and file types that a Windows
