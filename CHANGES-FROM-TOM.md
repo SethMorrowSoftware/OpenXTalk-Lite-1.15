@@ -42,31 +42,89 @@ IDE.)
 
 ## 1. The merge
 
-`tom-perry-1.15-merged` merges his macOS tree into his Windows tree. git
-takes every path that only one of them changed from that one, and every
-path both changed the same way as it is. The paths below are the rest:
-both trees changed them, differently (or, for `desktop-dc.h`, only the
-Windows tree did, and its version is not taken).
+`tom-perry-1.15-merged` merges his macOS tree into his Windows tree so
+that **each platform builds Tom Perry's own code for it**. git takes
+every path that only one of them changed from that one, and every path
+both changed the same way as it is. That covers what only one platform
+builds, the IDE, and his macOS tree's portability changes outside the
+engine (arm64 in `foundation.h`, curl's header choice, ANSI prototypes in
+the parser generators, `script-execute.cpp`), which change how the code
+compiles, not what it does. The paths in the table are the rest.
 
-The rule: a file that only one platform compiles takes Tom Perry's
-version for that platform, as he built and ran it; a file every platform
-compiles keeps both trees' changes, and where they conflict, each
-platform keeps its own version behind a platform check.
+**Per-platform** (35 engine files that every platform compiles, which his
+two trees change differently or only one of them changes): the file holds
+both of his versions. Every region where they differ is
+
+```
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+...his macOS lines...
+#else /* OXT-TOM: Windows */
+...his Windows lines...
+#endif /* OXT-TOM */
+```
+
+(`#if !defined(_MACOSX) /* OXT-TOM: Windows */` where only the Windows
+version has lines). A macOS build compiles exactly his macOS file, every
+other build exactly his Windows file; Linux, for which this tree has no
+source of his yet, takes the Windows one. Regions start and end only where
+both versions are outside every conditional directive.
+`tools/ci/per_platform.py` makes these files, and the guard checks that
+each splits back into his two files byte for byte. So his macOS-only
+behaviour stays on macOS, and his Windows-only behaviour on Windows and
+Linux.
+
+**One platform's file** (`windows`, `macos`): a file only one platform
+compiles, which both trees changed, takes that platform's version.
+
+**Combined**: two build files, which cannot hold `#if`, keep both trees'
+changes as git merged them.
 
 | path | taken | why |
 |---|---|---|
-| `engine/src/dskw32.cpp` | windows | Windows only. His macOS tree held an older or other version of his Windows work, which no macOS build compiles. |
+| `engine/src/dskw32.cpp` | windows | Windows only. His macOS tree held another version of his Windows work, which no macOS build compiles. |
 | `engine/src/w32dcs.cpp` | windows | Windows only, as above. |
 | `engine/src/w32dcw32.cpp` | windows | Windows only, as above. |
 | `engine/src/w32stack.cpp` | windows | Windows only, as above. |
-| `engine/src/desktop.cpp` | macos | The platform layer that only macOS uses (FEATURE_PLATFORM_APPLICATION, called through platform.cpp). His macOS version has the respring check in the macOS main loop and redraws every stack when the appearance changes; his Windows tree's edit (a call to `updatesystemappearance()`) was never compiled by any build of his. |
-| `engine/src/desktop-dc.cpp` | macos | macOS only, as above. His Windows tree's edits (dark initial colours, `updatesystemappearance()`) never compiled: Windows does not build this file, and on macOS it fails (a free function using the screen's members). |
+| `engine/src/desktop.cpp` | macos | The platform layer that only macOS uses. His macOS version has the respring check in the macOS main loop and redraws every stack when the appearance changes; his Windows tree's edit (a call to `updatesystemappearance()`) was never compiled by any build of his. |
+| `engine/src/desktop-dc.cpp` | macos | macOS only, as above. His Windows tree's edits (dark initial colours, `updatesystemappearance()`) never compiled: Windows does not build this file, and on macOS they fail. |
 | `engine/src/desktop-dc.h` | macos | Goes with `desktop-dc.cpp`: his Windows tree declared `updatesystemappearance()` here, which his macOS `desktop-dc.cpp` does not define. Only the Windows tree had changed this file. |
 | `engine/src/mac-core.mm` | macos | macOS only. His Windows tree had only wrapped two functions in `#ifndef _WINDOWS`, which changes nothing on macOS. |
-| `engine/src/respring.cpp` | combined | He wrote `_internal respring` twice, as two designs: on macOS the command unwinds the handler chain with MCquit and the main loop reloads the IDE with `MCdispatcher->startup()`; on Windows it only sets a flag (the unwind crashed there) and reloads the IDE step by step. Both files are kept whole, unchanged: macOS compiles his macOS one (`#if defined(_MACOSX)`), every other platform his Windows one. Only the comment at the top and the `#if`, `#else` and `#endif` lines are added. |
-| `engine/src/internal_development.cpp` | combined | His Windows version, plus his macOS tree's two developer commands, `_internal build MacARM` (which the IDE's macOS ARM standalone builder calls) and `_internal dump stack`, under `#if defined(_MACOSX)`: their source, `build_macarm.cpp`, needs `<dirent.h>`, which MSVC has not, and his Windows engine never had them. |
-| `engine/src/buttondraw.cpp` | combined | git kept both trees' changes: his dark-aware checkmark and cascade arrow (Windows tree) and his button labels 2 pixels higher (macOS tree). |
-| `engine/engine-sources.gypi` | combined | git kept both trees' changes: respring.cpp in the development engine's sources (Windows tree; his macOS Xcode project listed it by hand) and macicon.mm (macOS tree). |
+| `engine/src/buttondraw.cpp` | per-platform | Both trees: his dark-aware checkmark and cascade arrow (Windows tree), his button labels 2 pixels higher (macOS tree). |
+| `engine/src/internal_development.cpp` | per-platform | Both trees: `_internal respring` (Windows tree, in another place), `_internal build MacARM` (which the IDE's macOS ARM standalone builder calls), `_internal dump stack` and respring (macOS tree). |
+| `engine/src/respring.cpp` | per-platform | Both trees, two designs: on macOS the command unwinds with MCquit and the main loop reloads the IDE with `MCdispatcher->startup()`; on Windows it only sets a flag, because the unwind crashed there, and reloads the IDE step by step. |
+| `engine/src/button.cpp` | per-platform | His macOS tree: autoHilite radio buttons toggle off on a second click. |
+| `engine/src/cmds.cpp` | per-platform | His macOS tree: the macSetIcon command. |
+| `engine/src/cmds.h` | per-platform | His macOS tree: the macSetIcon command. |
+| `engine/src/combiners.cpp` | per-platform | His macOS tree: `<cstdint>` instead of local typedefs, a clang warning silenced. |
+| `engine/src/deploy_macosx.cpp` | per-platform | His macOS tree: `<mach/machine.h>` instead of LiveCode's own `cpu_type_t` (Windows and Linux, which compile this file too, have no such header); Save as Standalone takes arm64 engines. |
+| `engine/src/eventqueue.cpp` | per-platform | His macOS tree: key presses for a null stack are ignored. |
+| `engine/src/exec-files.cpp` | per-platform | His macOS tree: macSetIcon. |
+| `engine/src/exec-strings.cpp` | per-platform | His macOS tree: matchText, matchChunk and replaceText follow the caseSensitive. |
+| `engine/src/exec.h` | per-platform | His macOS tree: macSetIcon. |
+| `engine/src/executionerrors.h` | per-platform | His macOS tree: macSetIcon's errors. |
+| `engine/src/field.cpp` | per-platform | His macOS tree: fields wrap to the width freed by a hidden scrollbar. |
+| `engine/src/fieldf.cpp` | per-platform | His macOS tree: as field.cpp. |
+| `engine/src/font.cpp` | per-platform | His macOS tree: "semibold" is accepted as a font weight. |
+| `engine/src/funcs.cpp` | per-platform | His macOS tree: the macSetIcon function. |
+| `engine/src/funcs.h` | per-platform | His macOS tree: the macSetIcon function. |
+| `engine/src/lextable.cpp` | per-platform | His macOS tree: macSetIcon in the parser's tables. |
+| `engine/src/newobj.cpp` | per-platform | His macOS tree: macSetIcon. |
+| `engine/src/object.cpp` | per-platform | His macOS tree: dark-mode colours for unset properties, white button backgrounds in light mode, stacks not inheriting colours from the dispatcher. |
+| `engine/src/parsedef.h` | per-platform | His macOS tree: macSetIcon. |
+| `engine/src/parseerrors.h` | per-platform | His macOS tree: macSetIcon's parse errors. |
+| `engine/src/platform-window.cpp` | per-platform | His macOS tree: asynchronous window redraws. |
+| `engine/src/platform.h` | per-platform | His macOS tree: asynchronous window redraws. |
+| `engine/src/scrolbar.cpp` | per-platform | His macOS tree: scrollbars hidden when the content fits. |
+| `engine/src/scrollbardraw.cpp` | per-platform | His macOS tree: as scrolbar.cpp. |
+| `engine/src/stack2.cpp` | per-platform | His macOS tree: a guard against recursive menubar updates (macOS 14 and later). |
+| `engine/src/stack3.cpp` | per-platform | His macOS tree: dark combo-box pop-ups. |
+| `engine/src/dskmain.cpp` | per-platform | His Windows tree: the main loop does not quit while a respring is in progress. |
+| `engine/src/exec-interface-field-chunk.cpp` | per-platform | His Windows tree: a single-pass colour and style setter for the script editor. |
+| `engine/src/ide.cpp` | per-platform | His Windows tree: script editor colouring with a comment nesting cache. |
+| `engine/src/paragraf.h` | per-platform | His Windows tree: as ide.cpp. |
+| `engine/src/uidc.cpp` | per-platform | His Windows tree: `updatesystemappearance()`, which his Windows dark mode calls. |
+| `engine/src/uidc.h` | per-platform | His Windows tree: as uidc.cpp. |
+| `engine/engine-sources.gypi` | combined | git kept both trees' changes: respring.cpp in the development engine's sources (Windows tree; his macOS Xcode project listed it by hand) and macicon.mm (macOS tree, built on macOS only). |
 | `prebuilt/fetch-libraries.sh` | combined | git kept both trees' changes, his local prebuilt folders for each (both replaced after the merge, see section 2). |
 
 ## 2. The changes after the merge
@@ -317,16 +375,14 @@ Why: the Thirdparty build stopped at its first error.
 ### macOS: build the toolchain, libbrowser and deploy code with Xcode 16
 
 Why: current clang rejects the pre-ANSI C of the parser generators, and
-macOS 15's SDK adds a JavaScript type that a `switch` does not handle;
-and Tom Perry's `<mach/machine.h>` in `deploy_macosx.cpp` exists only on
-macOS, while the Windows and Linux IDE engines compile that file too.
+macOS 15's SDK adds a JavaScript type that a `switch` does not handle.
+(OXT-Beyond's commit also changed deploy_macosx.cpp; here the merge
+already gives macOS Tom Perry's version and the other platforms
+LiveCode's.)
 
 - `toolchain/gentle/gentle/gentle.gyp`, `toolchain/gentle/gentle/grts.gyp`,
   `toolchain/gentle/reflex/reflex.gyp`: compiled as gnu89 on macOS.
 - `libbrowser/src/libbrowser_osx_webview.mm`: a default case.
-- `engine/src/deploy_macosx.cpp`: his include stays where he put it, on
-  macOS only, and LiveCode's own `cpu_type_t` and `cpu_subtype_t` come
-  back for the other platforms.
 
 ### macOS arm64: use the newer libffi's headers for the engine
 
@@ -370,6 +426,25 @@ engine, but he never added them to the gyp files, so a gyp build of his
 `internal_development.cpp` does not link.
 
 - `engine/kernel-development.gyp`: both files, on macOS.
+
+### macOS: JNI headers from the JDK, not from a folder on Tom Perry's Mac
+
+Why: his macOS tree takes the Java headers from
+`/tmp/livecode-build/java-headers`, a folder his `setup_java_headers.sh`
+made on his own Mac; anywhere else libFoundation does not compile
+("'jni.h' file not found"), and no engine builds.
+
+- `libfoundation/libfoundation.gyp`: `<(javahome)/include` and
+  `<(javahome)/include/darwin` again, as in LiveCode (the build sets
+  javahome from JAVA_SDK). The file is LiveCode's again.
+
+### ICU data list: run remove_matching.py with python, as LiveCode does
+
+Why: his macOS tree runs the script with `python2`, the name of Python 2
+on his Mac; the Windows build machines have no such command, and the
+script now runs under Python 2 and 3.
+
+- `prebuilt/libicu.gyp`: `python` again. The file is LiveCode's again.
 
 ### Import the CI, tests and packaging tools of OXT-Beyond
 

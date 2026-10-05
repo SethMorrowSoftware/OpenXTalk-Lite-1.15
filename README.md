@@ -19,7 +19,10 @@ Tom Perry left two working copies of his 9.7.1-OXT engine, both clones of
 LiveCode Community 9.7 develop: one for Windows, with the OpenXTalk Lite
 IDE 1.15, and one for macOS (Apple Silicon, holding his Intel work too).
 They are imported here as he left them, on LiveCode's own history, and
-merged into one tree:
+merged into one tree from which **each platform builds his own code for
+it**: an engine file both platforms compile holds both of his versions,
+and macOS compiles his macOS one, Windows (and, for now, Linux) his
+Windows one:
 
 ```
 LiveCode Community history, up to develop 4606a10ea (2021-07-26)
@@ -60,8 +63,10 @@ files. (The Linux source in the record repository, `linux/` from
 each:
 
 1. **the merge**: every path where the merged tree is not simply what
-   Tom Perry's trees have (13 paths: which version each takes, or how the
-   two are combined);
+   Tom Perry's trees have (45 paths). Most are engine files that every
+   platform compiles: they hold both of his versions, so that macOS
+   compiles exactly his macOS file and Windows and Linux exactly his
+   Windows file;
 2. **every change after the merge**: each commit that touches a file of
    his, and what it changes in each file. They make his code build on
    today's compilers, SDKs and systems (Visual Studio 2022, current Xcode

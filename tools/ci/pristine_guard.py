@@ -16,9 +16,11 @@ tom-perry-1.15-merged merges them. This script checks:
      trees give (the version of the one tree that changed the path from
      the trees' common base, or the version both have), unless section 1
      of CHANGES-FROM-TOM.md has a row for the path, "| `path` | windows |",
-     "macos" or "combined": then the merged tree must have his Windows
-     version, his macOS version, or something that is neither. A path
-     both trees changed differently must have a row.
+     "macos", "per-platform" or "combined": then the merged tree must
+     have his Windows version, his macOS version, a file that splits back
+     into exactly his two versions (tools/ci/per_platform.py: macOS
+     compiles one, every other platform the other), or something that is
+     none of these. A path both trees changed differently must have a row.
   3. After the merge: every path that differs between tom-perry-1.15-merged
      and --head (default HEAD), without rename detection, must be either
      named (in backquotes) in section 2 of CHANGES-FROM-TOM.md, or an added
@@ -44,6 +46,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import per_platform  # noqa: E402
+
 WINDOWS_TAG = 'tom-perry-1.15'
 MACOS_TAG = 'tom-perry-1.15-macos'
 MERGED_TAG = 'tom-perry-1.15-merged'
@@ -67,6 +72,26 @@ def git(*args):
     except subprocess.CalledProcessError as e:
         raise GuardError('git %s: %s' % (' '.join(args), e.stderr.decode('utf-8', 'replace').strip()))
     return out.stdout.decode('utf-8', 'surrogateescape')
+
+
+def blob(oid):
+    try:
+        return subprocess.run(('git', 'cat-file', 'blob', oid), check=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).stdout
+    except subprocess.CalledProcessError as e:
+        raise GuardError('git cat-file blob %s: %s' % (oid, e.stderr.decode('utf-8', 'replace').strip()))
+
+
+def splits_back(merged, windows, macos):
+    """True when the merged blob splits into exactly the two versions"""
+    if merged is None or windows is None or macos is None:
+        return False
+    try:
+        text = blob(merged[1])
+        return (per_platform.split(text, 'macos') == blob(macos[1])
+                and per_platform.split(text, 'windows') == blob(windows[1]))
+    except ValueError:
+        return False
 
 
 def tree_entries(ref):
@@ -125,7 +150,7 @@ def read_changes(path):
             section = int(m.group(1))
             continue
         if section == 1:
-            m = re.match(r'^\|\s*`([^`]+)`\s*\|\s*(windows|macos|combined)\s*\|', line)
+            m = re.match(r'^\|\s*`([^`]+)`\s*\|\s*(windows|macos|per-platform|combined)\s*\|', line)
             if m:
                 if m.group(1) in rows:
                     raise GuardError('%s:%d: a second row for %s' % (path, number, m.group(1)))
@@ -202,11 +227,16 @@ def main(argv=None):
                       % (MERGED_TAG, path, args.changes))
             continue
         taken, line = row
-        ok = {'windows': r == w, 'macos': r == m, 'combined': r != w and r != m}[taken]
+        if taken == 'per-platform':
+            ok = splits_back(r, w, m)
+        else:
+            ok = {'windows': r == w, 'macos': r == m, 'combined': r != w and r != m}[taken]
         if not ok:
             error('%s:%d: %s is "%s", but the merged tree has %s'
                   % (args.changes, line, path, taken,
-                     'his Windows version' if r == w else 'his macOS version' if r == m else 'neither of his versions'))
+                     'his Windows version' if r == w else 'his macOS version' if r == m
+                     else 'a file that does not split back into his two versions' if taken == 'per-platform'
+                     else 'neither of his versions'))
         elif natural != 'contested' and r == natural:
             warning('%s:%d: %s needs no row: it is what Tom Perry\'s trees give' % (args.changes, line, path))
         resolutions.append((path, taken))
@@ -253,7 +283,7 @@ def main(argv=None):
              '- The merge: %d paths resolved as section 1 of %s says (%s).'
              % (len(resolutions), args.changes,
                 ', '.join('%d %s' % (sum(1 for _, t in resolutions if t == k), k)
-                          for k in ('windows', 'macos', 'combined'))),
+                          for k in ('windows', 'macos', 'per-platform', 'combined'))),
              '- After the merge: %d paths differ, %d of them files of this repository\'s own, %d of Tom Perry\'s '
              'changed or added and named in section 2, %d not documented.'
              % (len(changes), len(harness), len(documented), len(problems)), '']
