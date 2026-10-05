@@ -46,18 +46,50 @@ _OPEN = re.compile(rb'^\s*#\s*if(n?def)?\b')
 _CLOSE = re.compile(rb'^\s*#\s*endif\b')
 
 
-def _depths(lines):
-    """The conditional-directive nesting depth before each line, and after
-    the last one"""
-    depths = [0]
+def _states(lines):
+    """For each line, and after the last one: (nesting depth of conditional
+    directives, True when the line starts inside a /* */ comment or
+    continues the line before with a backslash). A region may only start
+    or end before a line whose state is (0, False)."""
+    states = []
+    depth = 0
+    in_comment = False
+    continued = False
     for line in lines:
-        d = depths[-1]
-        if _OPEN.match(line):
-            d += 1
-        elif _CLOSE.match(line):
-            d -= 1
-        depths.append(d)
-    return depths
+        states.append((depth, in_comment or continued))
+        if not in_comment and not continued:
+            if _OPEN.match(line):
+                depth += 1
+            elif _CLOSE.match(line):
+                depth -= 1
+        # Scan the line for comments, skipping string and character literals
+        i, n = 0, len(line)
+        quote = None
+        while i < n:
+            c = line[i:i + 1]
+            if in_comment:
+                if line.startswith(b'*/', i):
+                    in_comment = False
+                    i += 2
+                    continue
+            elif quote:
+                if c == b'\\':
+                    i += 2
+                    continue
+                if c == quote:
+                    quote = None
+            elif line.startswith(b'/*', i):
+                in_comment = True
+                i += 2
+                continue
+            elif line.startswith(b'//', i):
+                break
+            elif c in (b'"', b"'"):
+                quote = c
+            i += 1
+        continued = line.rstrip(b'\r\n').endswith(b'\\')
+    states.append((depth, in_comment or continued))
+    return states
 
 
 def _newline(lines):
@@ -72,14 +104,15 @@ def make(win, mac):
     if a and not a[-1].endswith(b'\n') or b and not b[-1].endswith(b'\n'):
         raise ValueError('both versions must end with a line end')
     nl = _newline(a + b)
-    da, db = _depths(a), _depths(b)
-    if da[-1] != 0 or db[-1] != 0:
-        raise ValueError('a version has unbalanced conditional directives')
+    sa, sb = _states(a), _states(b)
+    if sa[-1] != (0, False) or sb[-1] != (0, False):
+        raise ValueError('a version has unbalanced conditional directives or an unclosed comment')
     ops = difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
     # A region may only start or end where both versions are outside every
-    # conditional directive (depth 0) and at the same line of an equal run.
-    # Cut the file into pieces at those points; a piece with a difference
-    # becomes one region, holding both versions whole.
+    # conditional directive (depth 0), outside comments and not in a
+    # continued line, and at the same line of an equal run. Cut the file
+    # into pieces at those points; a piece with a difference becomes one
+    # region, holding both versions whole.
     groups = []
     start = (0, 0)
     differs = False
@@ -97,7 +130,7 @@ def make(win, mac):
             continue
         for k in range(a1 - a0):
             pos = (a0 + k, b0 + k)
-            if da[pos[0]] == 0 and db[pos[1]] == 0:
+            if sa[pos[0]] == (0, False) and sb[pos[1]] == (0, False):
                 flush(pos)
     flush((len(a), len(b)))
     # Neighbouring equal pieces back into one
@@ -121,7 +154,21 @@ def make(win, mac):
     merged = b''.join(out)
     if split(merged, 'macos') != mac or split(merged, 'windows') != win:
         raise ValueError('the merged file does not split back into the two versions')
+    check(merged)
     return merged
+
+
+def check(merged):
+    """Raise ValueError when a marker line of a merged file is inside a
+    comment or a continued line, or inside one of the versions'
+    conditional directives, where the preprocessor would not see it as
+    one of ours."""
+    lines = merged.splitlines(keepends=True)
+    states = _states(lines)
+    for number, line in enumerate(lines):
+        text = line.rstrip(b'\r\n').decode('utf-8', 'surrogateescape')
+        if text in MARKERS and states[number][1]:
+            raise ValueError('line %d: a marker inside a comment or a continued line' % (number + 1))
 
 
 def split(merged, which):
