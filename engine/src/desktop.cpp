@@ -45,14 +45,30 @@
 #include "desktop-dc.h"
 #include "param.h"
 
+// Respring support — forward declarations (respring.cpp)
+extern Boolean MCRespringIsPending(void);
+extern Boolean MCRespringDoRespring(void);
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(FEATURE_PLATFORM_APPLICATION)
 
 void X_main_loop(void)
 {
-	while(!MCquit)
-		X_main_loop_iteration();
+	for(;;)
+	{
+		while(!MCquit)
+			X_main_loop_iteration();
+
+		// If a respring was requested, perform it and continue the loop
+		if (MCRespringIsPending())
+		{
+			MCRespringDoRespring();
+			continue;
+		}
+
+		break;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,6 +153,15 @@ void MCPlatformHandleApplicationResume(void)
 void MCPlatformHandleApplicationRun(bool& r_continue)
 {
 	X_main_loop_iteration();
+
+	// If a respring was requested, perform it and keep running
+	if (MCquit && MCRespringIsPending())
+	{
+		MCRespringDoRespring();
+		r_continue = true;
+		return;
+	}
+
     r_continue = !MCquit;
 }
 
@@ -169,10 +194,24 @@ void MCPlatformHandleSystemAppearanceChanged(void)
 	if (MCscreen == nil)
 		return;
 	
-	// Update system colors and redraw all stacks
-	MCscreen -> updatesystemappearance();
+	//-- tperry 11th October 2025
+	// Redraw all stacks to reflect new appearance colors
+	// (Colors are now applied at render time in MCObject::getforecolor)
+	MCStacknode *t_node = MCstacks->topnode();
+	if (t_node != nil)
+	{
+		MCStacknode *t_start = t_node;
+		do
+		{
+			MCStack *t_stack = t_node->getstack();
+			if (t_stack != NULL)
+				t_stack->dirtyall();
+			
+			t_node = t_node->next();
+		} while (t_node != nil && t_node != t_start);
+	}
 	
-	// Send message to scripts
+	// Also send the message so scripts can handle it if needed
 	MCscreen -> delaymessage(MCdefaultstackptr -> getcurcard(), MCM_system_appearance_changed);
 }
 

@@ -1,0 +1,66 @@
+ARM MACOS BUILD - SOURCE MODIFICATIONS SUMMARY
+==============================================
+
+Date: November 2, 2025
+
+All source code modifications made for ARM64 macOS support:
+
+1. libfoundation/include/foundation.h
+   Lines: 188-193 (added)
+   Change: Added ARM64 detection for Mac platform
+   Code:
+   ```
+   #elif defined(__arm64__) || defined(__aarch64__)
+   #define __64_BIT__ 1
+   #define __LITTLE_ENDIAN__ 1
+   #define __ARM64__ 1
+   #define __LP64__ 1
+   #define __MEDIUM__ 1
+   ```
+   
+   Reason: Foundation library didn't detect ARM64 on macOS,
+           only on iOS. This caused "No memory model defined" error.
+   
+   Impact: CRITICAL - Enables entire engine to compile for ARM64
+
+2. prebuilt/libicu.gyp
+   Line: 309
+   Change: Python path for ICU data generation
+   FROM: '../thirdparty/python2/local-python/bin/python'
+   TO:   'python2'
+   
+   Reason: Generated script uses 'exec python' which doesn't exist.
+           Using 'python2' works with system PATH.
+   
+   Impact: Required for ICU data generation during build
+
+3. thirdparty/libcairo/libcairo.gyp
+   Lines: 504-514
+   Change: Exclude x86 SSE code for ARM64
+   FROM: 'OS != "mac"'
+   TO:   'OS != "mac" or target_arch == "arm64"'
+   Added excludes: pixman-sse2.c, pixman-ssse3.c, pixman-x86.c, pixman-mmx.c
+   
+   Reason: x86 SSE intrinsics don't compile on ARM64
+   
+   Impact: Required for Cairo to build on ARM64
+   
+   Note: Modified Xcode project saved in ARM build/xcode-projects/
+
+TOTAL MODIFICATIONS: 3 files
+COMPLEXITY: Minimal (< 20 lines of changes total)
+RISK: Low (architecture-specific, doesn't affect Intel builds)
+
+ALL MODIFICATIONS DOCUMENTED IN:
+- ARM build/gyp-modified/ (modified gyp files)
+- ARM build/xcode-projects/ (modified Xcode projects)
+- This file (summary)
+
+REVERSIBILITY:
+--------------
+All changes can be reverted using:
+- ARM build/scripts/restore-intel-build.sh
+- Or by restoring from ARM build/backups/
+
+The foundation.h change is the only permanent source modification
+needed. The others are build-system specific.

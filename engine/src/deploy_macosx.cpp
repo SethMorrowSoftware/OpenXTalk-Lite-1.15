@@ -14,7 +14,13 @@ for more details.
 You should have received a copy of the GNU General Public License
 along with LiveCode.  If not see <http://www.gnu.org/licenses/>.  */
 
+#if defined(_MACOSX) /* OXT-TOM: macOS */
 #include "prefix.h"
+
+#include <mach/machine.h>
+#else /* OXT-TOM: Windows */
+#include "prefix.h"
+#endif /* OXT-TOM */
 
 #include "globdefs.h"
 #include "objdefs.h"
@@ -64,9 +70,14 @@ typedef int             vm_prot_t;
  */
 
 #define VM_PROT_ALL     (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+
+// cpu_type_t and cpu_subtype_t are now defined by <mach/machine.h>
+#else /* OXT-TOM: Windows */
 
 typedef uint32_t       cpu_type_t;
 typedef uint32_t       cpu_subtype_t;
+#endif /* OXT-TOM */
 
 /*
  * Capability bits used in the definition of cpu_type.
@@ -1980,11 +1991,22 @@ static bool MCDeployToMacOSXFat(const MCDeployParameters& p_params, bool p_embed
 // This method verifies that the given engine is for Mac. It checks the CPU is
 // is either PPC or x86, and that the executable loads Cocoa.
 static bool MCDeployValidateMacEngine(const MCDeployParameters& p_params, mach_header& p_header, load_command **p_commands)
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+{
+	// Check the CPU type is PowerPC, X86, or ARM64
+#else /* OXT-TOM: Windows */
 {
 	// Check the CPU type is PowerPC or X86
+#endif /* OXT-TOM */
 	if (p_header . cputype != CPU_TYPE_POWERPC &&
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+		p_header . cputype != CPU_TYPE_X86 &&
+        p_header . cputype != CPU_TYPE_X86_64 &&
+        p_header . cputype != CPU_TYPE_ARM64)
+#else /* OXT-TOM: Windows */
 		p_header . cputype != CPU_TYPE_X86 &&
         p_header . cputype != CPU_TYPE_X86_64)
+#endif /* OXT-TOM */
 		return MCDeployThrow(kMCDeployErrorMacOSXBadCpuType);
 
 	// Check that Cocoa is one of the libraries linked to

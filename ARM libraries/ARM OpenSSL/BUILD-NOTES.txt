@@ -1,0 +1,50 @@
+ARM OPENSSL BUILD - NEEDS PREBUILT LIBRARIES
+=============================================
+
+Build Date: November 2, 2025
+Status: BLOCKED - Needs prebuilt OpenSSL
+
+ISSUE:
+------
+
+The libopenssl.xcodeproj is a WRAPPER that links against
+prebuilt OpenSSL libraries in prebuilt/lib/mac/
+
+The actual OpenSSL libraries need to be built separately
+in the prebuilt/ folder structure.
+
+WHAT'S NEEDED:
+--------------
+
+1. Build actual OpenSSL 1.1.1g for ARM64
+   Location: prebuilt/build/openssl-1.1.1g/
+   
+2. Install to: prebuilt/lib/mac-arm64/ (or similar)
+   - libssl.a
+   - libcrypto.a
+
+3. Then the wrapper libopenssl can link against them
+
+ALTERNATIVE APPROACH:
+---------------------
+
+For now, we can SKIP libopenssl wrapper and just note
+that the prebuilt OpenSSL needs to be compiled separately.
+
+This is not critical for initial testing - we have:
+✅ libffi (with ARM assembly)
+✅ All simple libraries
+✅ Graphics libraries
+
+OpenSSL can be built later when needed for:
+- HTTPS support
+- Cryptographic operations
+- SSL/TLS connections
+
+RECOMMENDATION:
+---------------
+
+Continue with other libraries and come back to OpenSSL
+when we need to build the full engine with network support.
+
+The critical ARM assembly library (libffi) is done!

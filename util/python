@@ -1,0 +1,5 @@
+#!/bin/sh
+# Wrapper script to redirect 'python' to 'python3' for ARM builds
+# This allows gyp-generated scripts to work without system modifications
+# The ICU script (util/remove_matching.py) is Python 2/3 compatible
+exec python3 "$@"

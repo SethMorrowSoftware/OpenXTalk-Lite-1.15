@@ -57,13 +57,19 @@
 			'src/types.c',
 		],
 		
-		'libffi_mac_source_files':
+		'libffi_mac_x86_source_files':
 		[
 			'src/x86/darwin.S',
 			'src/x86/darwin64.S',
 			'src/x86/ffi.c',
 			'src/x86/ffi64.c',
 			'src/x86/win32.S',
+		],
+		
+		'libffi_mac_arm64_source_files':
+		[
+			'src/aarch64/ffi.c',
+			'src/aarch64/sysv.S',
 		],
 		
 		'libffi_ios_source_files':
@@ -200,7 +206,7 @@
 			'conditions':
 			[
 				[
-					'toolset_os == "mac"',
+					'toolset_os == "mac" and toolset_arch != "arm64"',
 					{
 						'platform_include_dirs':
 						[
@@ -209,7 +215,22 @@
 						
 						'sources':
 						[
-							'<@(libffi_mac_source_files)',
+							'<@(libffi_mac_x86_source_files)',
+							'<@(libffi_generic_sources)'
+						],
+					},
+				],
+				[
+					'toolset_os == "mac" and toolset_arch == "arm64"',
+					{
+						'platform_include_dirs':
+						[
+							'<@(libffi_public_headers_darwin_osx_dir)',
+						],
+						
+						'sources':
+						[
+							'<@(libffi_mac_arm64_source_files)',
 							'<@(libffi_generic_sources)'
 						],
 					},

@@ -1,3 +1,20 @@
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+/* Copyright (C) 2003-2015 LiveCode Ltd.
+
+This file is part of LiveCode.
+
+LiveCode is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License v3 as published by the Free
+Software Foundation.
+
+LiveCode is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License
+along with LiveCode.  If not see <http://www.gnu.org/licenses/>.  */
+#else /* OXT-TOM: Windows */
 /* Copyright (C) 2003-2015 LiveCode Ltd.
 
 This file is part of LiveCode.
@@ -14,16 +31,32 @@ for more details.
 You should have received a copy of the GNU General Public License
 along with LiveCode.  If not see <http://www.gnu.org/licenses/>.  */
 
+#endif /* OXT-TOM */
 #include "prefix.h"
 
 #ifdef __VISUALC__
 #pragma optimize("agt", on)
 #pragma optimize("y", off)
 #endif
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+
+// Disable enum conversion warnings for this file since the template dispatch mechanism
+// intentionally uses enum casting as a compile-time dispatch mechanism
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wenum-constexpr-conversion"
+#endif
+
+#include <cstdint>
+
+// Standard fixed-width integer types are available from system headers
+// Remove the typedefs that conflict with standard library definitions
+#else /* OXT-TOM: Windows */
 
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t; 
 typedef unsigned char uint8_t;
+#endif /* OXT-TOM */
 
 static uint32_t g_current_background_colour = 0;
 
@@ -1387,4 +1420,12 @@ surface_combiner_t s_surface_combiners_nda[] =
 	surface_combine<OPERATION_BLEND_SOFT_LIGHT, false, true>,
 	surface_combine<OPERATION_BLEND_DIFFERENCE, false, true>,
 	surface_combine<OPERATION_BLEND_EXCLUSION, false, true>,
+#if defined(_MACOSX) /* OXT-TOM: macOS */
 };
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+#else /* OXT-TOM: Windows */
+};
+#endif /* OXT-TOM */

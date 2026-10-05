@@ -33,7 +33,7 @@ if [ "${OS}" = "Windows_NT" ]; then
 		LOCAL_DIR=
 	fi
 else
-	LOCAL_DIR=
+	LOCAL_DIR="${SCRIPT_DIR}"
 fi
 
 # Versions

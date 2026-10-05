@@ -935,21 +935,63 @@ void MCStack::stopedit()
 }
 
 void MCStack::updatemenubar()
+#if defined(_MACOSX) /* OXT-TOM: macOS */
 {
+	// tperry 19-09-2025 [menubar fix on MacOS]
+	// Guard against recursive menu updates that can occur on macOS 14 Sonoma, and above
+	// when NSWindow becomeKeyWindow triggers focus events during menu reconstruction
+	static bool s_updating_menubar = false;
+	if (s_updating_menubar)
+		return;
+	
+#else /* OXT-TOM: Windows */
+{
+#endif /* OXT-TOM */
 	if (opened && state & CS_KFOCUSED && !MClockmenus)
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+	{
+		s_updating_menubar = true;
+		
+		if (!hasmenubar() || (state & CS_EDIT_MENUS
+			&& mode < WM_PULLDOWN && mode != WM_PALETTE)
+			|| (gettool(this) != T_BROWSE && MCdefaultmenubar))
+		{
+#else /* OXT-TOM: Windows */
 	{
         if (!hasmenubar() || (state & CS_EDIT_MENUS
             && mode < WM_PULLDOWN && mode != WM_PALETTE)
             || (gettool(this) != T_BROWSE && MCdefaultmenubar))
         {
+#endif /* OXT-TOM */
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+			MCmenubar = nil;
+		}
+		
+#else /* OXT-TOM: Windows */
 			MCmenubar = nil;
         }
         
+#endif /* OXT-TOM */
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+		else
+		{
+#else /* OXT-TOM: Windows */
 		else
         {
+#endif /* OXT-TOM */
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+			MCmenubar = MCObjectCast<MCGroup>(getobjname(CT_GROUP, (getmenubar())));
+		}
+#else /* OXT-TOM: Windows */
 			MCmenubar = MCObjectCast<MCGroup>(getobjname(CT_GROUP, (getmenubar())));
         }
+#endif /* OXT-TOM */
+#if defined(_MACOSX) /* OXT-TOM: macOS */
 		MCscreen->updatemenubar(False);
+		s_updating_menubar = false;
+#else /* OXT-TOM: Windows */
+		MCscreen->updatemenubar(False);
+#endif /* OXT-TOM */
 	}
 }
 

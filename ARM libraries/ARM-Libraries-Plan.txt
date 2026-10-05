@@ -1,0 +1,367 @@
+ARM LIBRARIES BUILD PLAN - STARTING WITH LIBSKIA
+=================================================
+
+CRITICAL DISCOVERY: Skia source ALREADY has ARM64 support!
+- Git revision: 20471894eaa441193d5ae8f2395e8244c91c55af
+- Contains ARM NEON optimizations for ARM64
+- Has SK_CPU_ARM64 conditional compilation
+- Includes arm_neon.h intrinsics
+- ARM-specific assembly in SkBlitRow_opts_arm_neon.cpp
+
+PHASE 1: SETUP ARM LIBRARIES WORKSPACE
+---------------------------------------
+
+[ ] 1.1 Create ARM libraries directory structure
+    mkdir -p ARM-Libraries/libskia
+    mkdir -p ARM-Libraries/build-logs
+    mkdir -p ARM-Libraries/lib
+    mkdir -p ARM-Libraries/include
+
+[ ] 1.2 Document current x86_64 build process
+    - Test current x86_64 build: make config-mac && make compile-mac
+    - Document which .a files are produced
+    - Note library dependencies
+
+
+PHASE 2: ANALYZE LIBSKIA BUILD CONFIGURATION
+---------------------------------------------
+
+Current Skia Build Setup (from libskia.gyp):
+
+Architecture Detection (line 191):
+- Checks: toolset_arch not in ("i386", "x86", "x86_64", "i386 x86_64", "x64", 
+           "armv6", "armv6hf", "armv7", "arm64", "armv7 arm64")
+- ARM64 IS ALREADY RECOGNIZED!
+
+Optimization Targets:
+1. libskia_opt_none - fallback (no SIMD)
+2. libskia_opt_arm - ARM/ARM64 NEON (lines 203-266)
+   - Triggered when: toolset_arch in ("armv7", "arm64", "armv7 arm64")
+   - Sources: opts_arm_srcs + opts_armv7_arm64_srcs + opts_crc32_srcs
+   
+3. libskia_opt_sse2/sse3/sse41/sse42/avx/hsw - x86_64 only
+
+ARM64 Source Files (already present):
+- src/opts/SkBitmapProcState_arm_neon.cpp
+- src/opts/SkBitmapProcState_matrixProcs_neon.cpp
+- src/opts/SkBlitMask_opts_arm_neon.cpp
+- src/opts/SkBlitRow_opts_arm_neon.cpp
+- src/opts/SkBlitMask_opts_arm.cpp
+- src/opts/SkBlitRow_opts_arm.cpp
+- src/opts/SkOpts_crc32.cpp
+
+ARM64 Headers:
+- src/opts/Sk4px_NEON.h
+- src/opts/SkNx_neon.h
+- src/opts/SkColor_opts_neon.h
+- src/opts/SkBlitRow_opts_arm_neon.h
+- src/opts/SkBlitMask_opts_arm_neon.h
+
+Key Finding: The gyp file is READY for ARM64 builds!
+
+
+PHASE 3: MODIFY BUILD CONFIGURATION FOR ARM64
+----------------------------------------------
+
+[ ] 3.1 Update config/arch.gypi to detect ARM64
+    File: /livecode/config/arch.gypi
+    
+    Add after line 40:
+    [
+        'uname_m == "arm64" or uname_m == "aarch64"',
+        {
+            'host_arch': 'arm64',
+        },
+    ],
+
+[ ] 3.2 Update config/mac.gypi for ARM64 architecture
+    File: /livecode/config/mac.gypi
+    
+    Change lines 216, 226, 236:
+    FROM: 'ARCHS': 'x86_64',
+    TO:   'ARCHS': 'arm64',
+    
+    OR for Universal Binary:
+    TO:   'ARCHS': 'x86_64 arm64',
+    
+    Update line 27:
+    FROM: 'MACOSX_DEPLOYMENT_TARGET': '10.9',
+    TO:   'MACOSX_DEPLOYMENT_TARGET': '11.0',
+
+[ ] 3.3 Verify toolset_arch will be set correctly
+    - gyp should set toolset_arch based on ARCHS setting
+    - Confirm it maps to "arm64" for ARM builds
+
+
+PHASE 4: BUILD LIBSKIA DEPENDENCIES FIRST
+------------------------------------------
+
+Skia depends on (from libskia.gyp line 640-644):
+[ ] 4.1 libgif - simple, no assembly
+[ ] 4.2 libexpat - simple, no assembly  
+[ ] 4.3 libjpeg - simple, no assembly
+[ ] 4.4 libpng - simple, no assembly
+[ ] 4.5 libz - simple, no assembly
+
+Build Process for Each:
+1. cd thirdparty/lib[name]
+2. Check [name].gyp for any x86-specific settings
+3. Build: xcodebuild -project ../../build-mac/livecode/thirdparty/lib[name]/lib[name].xcodeproj \
+          -configuration Release -arch arm64
+4. Verify output: file ../../_build/mac/Release/lib[name].a
+5. Should show: "Mach-O 64-bit object arm64"
+
+
+PHASE 5: BUILD LIBSKIA FOR ARM64
+---------------------------------
+
+[ ] 5.1 Regenerate Xcode project with ARM64 config
+    cd /livecode
+    make config-mac
+    
+    This should regenerate:
+    build-mac/livecode/thirdparty/libskia/libskia.xcodeproj
+
+[ ] 5.2 Verify Xcode project architecture
+    Check: build-mac/livecode/thirdparty/libskia/libskia.xcodeproj/project.pbxproj
+    Should contain: ARCHS = arm64;
+
+[ ] 5.3 Build libskia optimization targets
+    cd build-mac/livecode/thirdparty/libskia
+    
+    xcodebuild -project libskia.xcodeproj -configuration Release \
+               -target libskia_opt_none -arch arm64
+    
+    xcodebuild -project libskia.xcodeproj -configuration Release \
+               -target libskia_opt_arm -arch arm64
+    
+    SKIP x86 targets:
+    - libskia_opt_sse2
+    - libskia_opt_sse3
+    - libskia_opt_sse41
+    - libskia_opt_sse42
+    - libskia_opt_avx
+    - libskia_opt_hsw
+
+[ ] 5.4 Build main libskia target
+    xcodebuild -project libskia.xcodeproj -configuration Release \
+               -target libskia -arch arm64
+
+[ ] 5.5 Verify output libraries
+    cd ../../_build/mac/Release
+    
+    file libskia.a
+    file libskia_opt_none.a
+    file libskia_opt_arm.a
+    
+    Expected: "Mach-O 64-bit object arm64"
+
+[ ] 5.6 Check for ARM NEON code compilation
+    nm libskia_opt_arm.a | grep -i neon
+    Should show NEON-optimized symbols
+
+
+PHASE 6: TEST LIBSKIA ARM64 BUILD
+----------------------------------
+
+[ ] 6.1 Create simple test program
+    File: ARM-Libraries/test-skia.cpp
+    
+    #include "SkCanvas.h"
+    #include "SkSurface.h"
+    #include "SkBitmap.h"
+    
+    int main() {
+        SkBitmap bitmap;
+        bitmap.allocN32Pixels(100, 100);
+        return 0;
+    }
+
+[ ] 6.2 Compile test program for ARM64
+    clang++ -arch arm64 -std=c++11 \
+        -I thirdparty/libskia/include/core \
+        -I thirdparty/libskia/include/config \
+        -I thirdparty/libskia/include/utils \
+        test-skia.cpp \
+        _build/mac/Release/libskia.a \
+        _build/mac/Release/libskia_opt_arm.a \
+        _build/mac/Release/libskia_opt_none.a \
+        -o test-skia-arm64
+
+[ ] 6.3 Run test on ARM Mac
+    ./test-skia-arm64
+    
+    If successful: "No errors, Skia ARM64 works!"
+
+[ ] 6.4 Compare performance (optional)
+    - Build x86_64 version
+    - Run both via Rosetta 2 vs native
+    - Measure rendering performance
+
+
+PHASE 7: COPY TO ARM-LIBRARIES FOLDER
+--------------------------------------
+
+[ ] 7.1 Copy built libraries
+    cp _build/mac/Release/libskia*.a ARM-Libraries/lib/
+
+[ ] 7.2 Copy headers
+    cp -r thirdparty/libskia/include/* ARM-Libraries/include/
+
+[ ] 7.3 Document build
+    Create: ARM-Libraries/libskia/BUILD-NOTES.txt
+    - Build date
+    - Architecture: arm64
+    - Optimizations enabled: NEON
+    - Dependencies: libgif, libexpat, libjpeg, libpng, libz
+    - Any issues encountered
+
+
+POTENTIAL ISSUES AND SOLUTIONS
+===============================
+
+ISSUE 1: Gyp doesn't detect ARM64 architecture
+SOLUTION: Manually set in environment before config
+    export ARCHFLAGS="-arch arm64"
+    make config-mac
+
+ISSUE 2: Xcode project still builds x86_64
+SOLUTION: Force architecture in xcodebuild command
+    xcodebuild ... ARCHS=arm64 ONLY_ACTIVE_ARCH=NO
+
+ISSUE 3: Assembly code doesn't compile
+SOLUTION: Check SK_CPU_ARM64 is defined
+    Add to defines in libskia.gyp if needed:
+    'defines': ['SK_CPU_ARM64']
+
+ISSUE 4: NEON intrinsics not found
+SOLUTION: Ensure arm_neon.h is available
+    Should be in SDK: thirdparty/sdk/MacOSX12.1.sdk/usr/include/arm_neon.h
+
+ISSUE 5: Linking errors with dependencies
+SOLUTION: Build dependencies first (Phase 4)
+    Ensure all .a files are ARM64
+
+ISSUE 6: Runtime crashes on ARM Mac
+SOLUTION: Check for x86-specific assumptions
+    - Verify no SSE intrinsics leaked in
+    - Check alignment requirements
+    - Validate endianness handling
+
+
+BUILD SCRIPT TEMPLATE
+=====================
+
+Create: ARM-Libraries/build-libskia-arm64.sh
+
+#!/bin/bash
+set -e
+
+echo "Building libskia for ARM64 macOS"
+
+# Configuration
+LIVECODE_ROOT="/Users/admin/Cascade/Livecode-Community-9.6.3/livecode"
+BUILD_DIR="$LIVECODE_ROOT/_build/mac/Release"
+OUTPUT_DIR="$LIVECODE_ROOT/../ARM-Libraries/lib"
+
+cd "$LIVECODE_ROOT"
+
+# Step 1: Build dependencies
+echo "Building libskia dependencies..."
+for lib in libgif libexpat libjpeg libpng libz; do
+    echo "  Building $lib..."
+    xcodebuild -project "build-mac/livecode/thirdparty/$lib/$lib.xcodeproj" \
+               -configuration Release \
+               -arch arm64 \
+               ARCHS=arm64 \
+               ONLY_ACTIVE_ARCH=NO
+done
+
+# Step 2: Build libskia optimization targets
+echo "Building libskia optimization targets..."
+xcodebuild -project "build-mac/livecode/thirdparty/libskia/libskia.xcodeproj" \
+           -configuration Release \
+           -target libskia_opt_none \
+           -arch arm64 \
+           ARCHS=arm64 \
+           ONLY_ACTIVE_ARCH=NO
+
+xcodebuild -project "build-mac/livecode/thirdparty/libskia/libskia.xcodeproj" \
+           -configuration Release \
+           -target libskia_opt_arm \
+           -arch arm64 \
+           ARCHS=arm64 \
+           ONLY_ACTIVE_ARCH=NO
+
+# Step 3: Build main libskia
+echo "Building libskia..."
+xcodebuild -project "build-mac/livecode/thirdparty/libskia/libskia.xcodeproj" \
+           -configuration Release \
+           -target libskia \
+           -arch arm64 \
+           ARCHS=arm64 \
+           ONLY_ACTIVE_ARCH=NO
+
+# Step 4: Verify and copy
+echo "Verifying ARM64 architecture..."
+file "$BUILD_DIR/libskia.a"
+file "$BUILD_DIR/libskia_opt_arm.a"
+
+echo "Copying to ARM-Libraries..."
+mkdir -p "$OUTPUT_DIR"
+cp "$BUILD_DIR"/libskia*.a "$OUTPUT_DIR/"
+
+echo "libskia ARM64 build complete!"
+echo "Libraries in: $OUTPUT_DIR"
+
+
+NEXT STEPS AFTER LIBSKIA
+=========================
+
+Once libskia ARM64 is working, proceed with:
+
+1. libcairo (has ARM assembly)
+2. libffi (has ARM assembly)
+3. libopenssl (has ARM assembly)
+4. Remaining simple libraries
+5. Prebuilt dependencies (ICU, OpenSSL, curl)
+
+Each library follows similar pattern:
+- Check for ARM-specific code
+- Update gyp if needed
+- Build dependencies first
+- Build library
+- Test and verify
+- Copy to ARM-Libraries folder
+
+
+ESTIMATED TIME
+==============
+
+Phase 1 (Setup): 30 minutes
+Phase 2 (Analysis): 1 hour (DONE - this document)
+Phase 3 (Config): 1 hour
+Phase 4 (Dependencies): 2 hours
+Phase 5 (Build Skia): 2-4 hours
+Phase 6 (Testing): 1-2 hours
+Phase 7 (Documentation): 30 minutes
+
+Total: 8-11 hours for libskia ARM64
+
+This is the CRITICAL PATH - once Skia works, other libraries follow same pattern.
+
+
+VALIDATION CHECKLIST
+====================
+
+Before considering libskia complete:
+[ ] Libraries built successfully
+[ ] Architecture verified as arm64
+[ ] No x86_64 code in binaries
+[ ] ARM NEON optimizations present
+[ ] Test program compiles and links
+[ ] Test program runs on ARM Mac
+[ ] No crashes or errors
+[ ] Dependencies all ARM64
+[ ] Build process documented
+[ ] Build script created and tested

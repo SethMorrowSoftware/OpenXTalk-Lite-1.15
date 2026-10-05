@@ -738,8 +738,13 @@ bool MCStringsCompilePattern(MCStringRef p_pattern, regexp*& r_compiled, bool ca
 void MCStringsEvalMatchText(MCExecContext& ctxt, MCStringRef p_string, MCStringRef p_pattern, MCStringRef* r_results, uindex_t p_result_count, bool& r_match)
 {
     regexp* t_compiled = nil;
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+
+    if (!MCStringsCompilePattern(p_pattern, t_compiled, ctxt.GetCaseSensitive()))
+#else /* OXT-TOM: Windows */
 
     if (!MCStringsCompilePattern(p_pattern, t_compiled, true /* casesensitive */))
+#endif /* OXT-TOM */
     {
         ctxt.LegacyThrow(EE_MATCH_BADPATTERN);
         return;
@@ -781,8 +786,13 @@ void MCStringsEvalMatchText(MCExecContext& ctxt, MCStringRef p_string, MCStringR
 void MCStringsEvalMatchChunk(MCExecContext& ctxt, MCStringRef p_string, MCStringRef p_pattern, MCStringRef* r_results, uindex_t p_result_count, bool& r_match)
 {
     regexp* t_compiled = nil;
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+    
+    if (!MCStringsCompilePattern(p_pattern, t_compiled, ctxt.GetCaseSensitive()))
+#else /* OXT-TOM: Windows */
     
     if (!MCStringsCompilePattern(p_pattern, t_compiled, true /* casesensitive */))
+#endif /* OXT-TOM */
     {
         ctxt.LegacyThrow(EE_MATCH_BADPATTERN);
         return;
@@ -838,8 +848,13 @@ void MCStringsEvalMatchChunk(MCExecContext& ctxt, MCStringRef p_string, MCString
 void MCStringsEvalReplaceText(MCExecContext& ctxt, MCStringRef p_string, MCStringRef p_pattern, MCStringRef p_replacement, MCStringRef& r_result)
 {
     regexp* t_compiled = nil;
+#if defined(_MACOSX) /* OXT-TOM: macOS */
+
+    if (!MCStringsCompilePattern(p_pattern, t_compiled, ctxt.GetCaseSensitive()))
+#else /* OXT-TOM: Windows */
 
     if (!MCStringsCompilePattern(p_pattern, t_compiled, true /* casesensitive */))
+#endif /* OXT-TOM */
     {
         ctxt.LegacyThrow(EE_REPLACETEXT_BADPATTERN);
         return;

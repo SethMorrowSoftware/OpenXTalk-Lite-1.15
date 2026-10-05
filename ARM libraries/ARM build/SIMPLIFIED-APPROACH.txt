@@ -1,0 +1,147 @@
+SIMPLIFIED ARM BUILD APPROACH - NO GYP!
+========================================
+
+BREAKTHROUGH REALIZATION:
+-------------------------
+We don't need gyp at all for ARM builds!
+We can use the EXISTING Xcode projects with ARM64 flags.
+
+OLD APPROACH (Complex):
+-----------------------
+1. Modify gyp files
+2. Run gyp with Python to regenerate Xcode projects
+3. Build with xcodebuild
+4. Manage Python 2 vs Python 3
+5. Deal with gyp compatibility
+
+NEW APPROACH (Simple):
+----------------------
+1. Build with xcodebuild + ARM64 flags
+That's it!
+
+THE MAGIC COMMAND:
+------------------
+
+xcodebuild -project "build-mac/livecode/thirdparty/LIBRARY/LIBRARY.xcodeproj" \
+           -configuration Release \
+           -arch arm64 \
+           ARCHS=arm64 \
+           ONLY_ACTIVE_ARCH=NO \
+           MACOSX_DEPLOYMENT_TARGET=11.0
+
+This works because:
+- Xcode projects already exist
+- xcodebuild can override architecture at build time
+- No project regeneration needed
+
+PROOF IT WORKS:
+---------------
+
+✓ libskia - Built successfully (84MB ARM64)
+  - No gyp modifications
+  - Just xcodebuild with ARM64 flags
+  - Perfect!
+
+HANDLING x86-SPECIFIC CODE:
+---------------------------
+
+For libraries like Cairo with x86 SSE code:
+
+Option 1 (Recommended): One-time gyp run
+  1. Modify gyp file to exclude x86 code
+  2. Run gyp ONCE to regenerate Xcode project
+  3. Commit modified Xcode project
+  4. Use xcodebuild forever after
+
+Option 2: Manual Xcode project edit
+  1. Open Xcode project
+  2. Remove x86-specific files from build
+  3. Save project
+  4. Use xcodebuild
+
+Either way: NO ONGOING GYP USAGE!
+
+GENERIC BUILD SCRIPT:
+---------------------
+
+Created: ARM build/scripts/build-library-arm64.sh
+
+Usage:
+  ./build-library-arm64.sh libskia
+  ./build-library-arm64.sh libcairo libz
+  ./build-library-arm64.sh libffi
+
+This script:
+- Builds dependencies first
+- Builds main library
+- Verifies ARM64 architecture
+- No Python, no gyp, just xcodebuild
+
+REVISED WORKFLOW:
+-----------------
+
+For ANY library:
+
+1. Setup (one-time if needed):
+   cd "ARM libraries/ARM build/scripts"
+   ./setup-arm-build.sh  # Only if gyp modifications needed
+   
+2. Build:
+   ./build-library-arm64.sh LIBRARY_NAME [dependencies]
+   
+3. Done!
+
+EXAMPLES:
+---------
+
+Build Skia (no modifications needed):
+  ./build-library-arm64.sh libskia
+
+Build Cairo (with modifications):
+  ./setup-arm-build.sh  # One-time: install modified gyp
+  # Run gyp once to regenerate Xcode project
+  ./build-library-arm64.sh libcairo libz
+
+Build FFI:
+  ./build-library-arm64.sh libffi
+
+WHAT WE KEEP:
+-------------
+
+✓ ARM build/ folder structure
+✓ Modified gyp files (for one-time project generation)
+✓ setup-arm-build.sh (for gyp modifications)
+✓ restore-intel-build.sh (to restore Intel)
+✓ Library-specific build scripts
+
+WHAT WE REMOVE:
+---------------
+
+✗ config-arm-build.sh (not needed)
+✗ config-arm.sh (not needed)
+✗ Python 3 dependency (not needed)
+✗ Ongoing gyp usage (not needed)
+
+BENEFITS:
+---------
+
+✓ Much simpler
+✓ No Python dependency
+✓ No gyp dependency  
+✓ Faster builds
+✓ Easier to understand
+✓ More reliable
+✓ Works with existing projects
+✓ Proven to work (Skia success)
+
+THIS IS THE WAY!
+----------------
+
+This approach is:
+- Simpler
+- Faster
+- More reliable
+- Easier to maintain
+- Proven to work
+
+We should adopt this for all ARM library builds.

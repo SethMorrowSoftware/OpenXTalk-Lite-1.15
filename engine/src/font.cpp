@@ -807,7 +807,19 @@ const char *MCF_getweightstring(uint2 style)
 }
 
 Boolean MCF_setweightstring(uint2 &style, MCStringRef data)
+#if defined(_MACOSX) /* OXT-TOM: macOS */
 {
+	// Handle "semibold" as an alias for "demibold" (MCFW_SEMIBOLD)
+	if (MCStringIsEqualToCString(data, "semibold", kMCCompareCaseless))
+	{
+		style &= ~FA_WEIGHT;
+		style |= MCFW_SEMIBOLD;
+		return True;
+	}
+	
+#else /* OXT-TOM: Windows */
+{
+#endif /* OXT-TOM */
 	uint2 w;
 	for (w = MCFW_UNDEFINED ; w <= MCFW_ULTRABOLD ; w++)
 		if (MCStringIsEqualToCString(data, weightstrings[w], kMCCompareCaseless))
