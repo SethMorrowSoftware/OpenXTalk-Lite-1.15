@@ -8,9 +8,9 @@
 # in a Debian 11 i386 container (tools/ci/i386-container.sh): glibc 2.31
 # and GCC 10's libstdc++ are the oldest the binaries need (the Verify step
 # checks every ELF file with tools/ci/check_elf_floor.py), and Ubuntu 20.04
-# still has the Python 2.7 that gyp and config.py need. Tom Perry built his
-# 9.x engine for Windows and macOS (his Linux work was a separate 7.x
-# engine); these builds use OXT-Beyond's Linux port of the build files.
+# still has the Python 2.7 that gyp and config.py need. Tom Perry's Linux
+# 1.15 source is not imported yet, so these builds are of the merged
+# Windows and macOS tree, with OXT-Beyond's Linux port of the build files.
 #
 # Prebuilt libraries: LiveCode's download server no longer serves them, so
 # they are built here from the versions pinned in prebuilt/versions (the

@@ -47,10 +47,12 @@ The IDE releases and Tom Perry's two engine commits keep their original
 authors, dates and messages. LiveCode's own README is at
 `git show tom-perry-1.15:README.md`.
 
-Not here: his Linux source, which is a separate 7.x engine line (LiveCode
-7.1.4 with the LiveCode 7 IDE), not the 9.x engine OpenXTalk Lite 1.15
-runs on; it stays in the record repository (`linux/`). The Linux packages
-here are the merged 9.x tree built for Linux.
+Not here yet: **Tom Perry's Linux 1.15 source**. It is to be imported and
+merged like his macOS tree. Until then, the Linux packages here are the
+merged tree built for Linux with OXT-Beyond's Linux port of the build
+files. (The Linux source in the record repository, `linux/` from
+`16_OXT-Lite-Source-sep102026-linux.tar.gz`, is a different tree: LiveCode
+7.1.4 with the LiveCode 7 IDE, versioned 7.4.1, not OpenXTalk Lite 1.15.)
 
 ## Every change is documented
 

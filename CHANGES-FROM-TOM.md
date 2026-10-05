@@ -35,9 +35,10 @@ python3 tools/ci/pristine_guard.py                     # the checks above
 Not in this repository: his Intel tree as such (`macos-intel/` there; the
 Apple Silicon tree holds his Intel work, and differs from it only by
 backups, a debug build script, the SQLite ORIGIN note and an unused
-12-line `platform-window-mac.mm`), and his 7.x engine line for Linux
-(`linux/` there: LiveCode 7.1.4 with the LiveCode 7 IDE, a different
-engine from the 9.x one that OpenXTalk Lite 1.15 runs on).
+12-line `platform-window-mac.mm`), and, not yet, his Linux 1.15 source,
+which is to be imported and merged like his macOS tree. (`linux/` there
+is a different tree, versioned 7.4.1: LiveCode 7.1.4 with the LiveCode 7
+IDE.)
 
 ## 1. The merge
 
@@ -171,9 +172,11 @@ Why: as above, WIN32_LEAN_AND_MEAN leaves these headers out.
 
 ### Build the engine on Linux x86_64 and arm64
 
-Why: Tom Perry built his 9.x engine for Windows and macOS only; his
-respring globals lived in the Windows main file, so no other engine
-linked, and his Linux work was a separate 7.x engine.
+Why: his Linux 1.15 source is not in this repository yet, so Linux is
+built from the merged Windows and macOS tree, in which his respring
+globals live in the Windows main file, so no other engine links. These
+are OXT-Beyond's Linux port of the build; when his Linux source is
+merged, they are to be checked against it.
 
 - `engine/src/dskw32main.cpp`, `engine/src/dskmain.cpp`: the respring
   function pointers move to the file every desktop engine compiles.
