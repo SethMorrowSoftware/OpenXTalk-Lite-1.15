@@ -1,0 +1,49 @@
+# Checks that the code is still Tom Perry's OpenXTalk Lite 1.15: every path
+# that differs from the tag tom-perry-1.15 must be allowed by
+# .github/pristine-allowlist.txt (this repository's own files, and one by
+# one the files the build changes touch), and the tag must still have the
+# tree of windows/ in openxtalk/OpenXTalk-Lite at 6f8f4cc851. See
+# tools/ci/pristine_guard.py. The job summary lists the build changes with
+# their line counts.
+#
+# Runs on every push to main and every pull request, by hand, and from
+# release.yml (workflow_call) before anything is published.
+
+name: Pristine guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Pristine guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # A blobless clone with only the guard's own files checked out:
+      # comparing two commits needs their trees, not the files' contents,
+      # and git fetches the few contents the line counts need when asked.
+      # The token stays in .git/config for that; this job only reads.
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            tools/ci
+
+      - name: Fetch the tag tom-perry-1.15
+        run: |
+          git fetch --no-tags --depth=1 origin '+refs/tags/tom-perry-1.15:refs/tags/tom-perry-1.15'
+          git log -1 --format='%H %an %ad %s' tom-perry-1.15
+
+      - name: Check the paths that differ from tom-perry-1.15
+        run: python3 tools/ci/pristine_guard.py --summary
