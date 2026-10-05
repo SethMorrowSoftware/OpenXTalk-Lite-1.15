@@ -8,5 +8,13 @@
 
 # The Linux x86-64 runtime's revpdfprinter.so is a 32-bit (i386) library,
 # as OpenXTalk Lite 1.15 shipped it, so a 64-bit Linux standalone cannot
-# load it.
+# load it. Only the Windows and macOS packages carry that runtime: the
+# Linux x86-64 package has the one its build makes, so there this entry
+# is reported as not occurring.
 Runtime/Linux/x86-64/Support/revpdfprinter.so is ELF x86, expected ELF x86_64
+
+# The Linux x86-32 runtime lists revbrowser.so in Externals.txt but has no
+# CEF library (its Externals/CEF holds only empty locales and swiftshader
+# folders), as OpenXTalk Lite 1.15 shipped it, so a 32-bit Linux
+# standalone that uses revBrowser cannot open a browser.
+Runtime/Linux/x86-32/Externals/CEF/libcef.so is missing

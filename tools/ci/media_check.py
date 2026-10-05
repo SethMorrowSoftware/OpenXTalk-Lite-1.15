@@ -47,7 +47,10 @@ That engine then runs tools/ci/media-check.livecodescript, which
     reported without failing the check;
   - on Linux, clicks the controller the engine draws below mplayer's
     video: its play button plays and pauses, a click in its well seeks,
-    and the snapshots of what it draws show which. With --snapshots those
+    and the snapshots of what it draws show which. (Tom Perry's Linux
+    player draws no controller and runs none of mplayer's commands:
+    KNOWN and KNOWN_NO_CONTROLLER report those failures without failing
+    the check.) With --snapshots those
     snapshots, and the screen with the video, are written to DIR (and,
     under GitHub Actions, into the log as base64).
 
@@ -102,6 +105,21 @@ KNOWN = {
         'oxt-check.mp4': 'Windows: DirectShow cannot open MP4 without a third-party filter',
         'oxt-check-silent.mp4': 'Windows: DirectShow cannot open MP4 without a third-party filter',
     },
+    # Tom Perry's code has LiveCode 9.7's Linux player (engine/src/
+    # lnxmplayer.cpp), which writes mplayer's slave commands without the
+    # newline that ends each one, so mplayer runs none of them and plays
+    # every file to its end whatever the script does
+    'linux': dict((name, "Linux: this tree's player sends mplayer its commands without the newline "
+                         "that ends them, so mplayer runs none: duration and currentTime stay 0 and "
+                         "pause does nothing (fixed in OXT-Beyond dd9dd938c)")
+                  for name in ('oxt-check.wav',) + VIDEOS),
+}
+# Platforms whose player draws no controller, with the reason: the
+# failures of the controller checks ("player controller (<file>): ...")
+# are reported (KNOWN) but do not fail the check
+KNOWN_NO_CONTROLLER = {
+    'linux': "Linux: this tree's player has no controller, showController does nothing "
+             "(OXT-Beyond e9c28e90e added one)",
 }
 # Without a sound device (a CI runner) Windows cannot play a file that is
 # only sound
@@ -290,6 +308,14 @@ def main(argv=None):
                 mine = [x for x in results if x.split(' ', 1)[-1].startswith('player %s:' % name)]
                 if mine and not any(x.startswith('FAIL ') for x in mine):
                     lines.append('INFO player %s plays, though it is listed as known not to (%s)' % (name, reason))
+                results = ['KNOWN' + x[4:] + ' [%s]' % reason if x in mine and x.startswith('FAIL ') else x
+                           for x in results]
+            if p.family in KNOWN_NO_CONTROLLER:
+                reason = KNOWN_NO_CONTROLLER[p.family]
+                mine = [x for x in results if x.split(' ', 1)[-1].startswith('player controller (')]
+                if mine and not any(x.startswith('FAIL ') for x in mine):
+                    lines.append('INFO the player controller works, though it is listed as known not to (%s)'
+                                 % reason)
                 results = ['KNOWN' + x[4:] + ' [%s]' % reason if x in mine and x.startswith('FAIL ') else x
                            for x in results]
             lines += results
