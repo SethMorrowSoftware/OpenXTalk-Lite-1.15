@@ -1,0 +1,8 @@
+# Engine test suite (tools/ci/run_engine_tests.py): tests known to fail on
+# Windows that are not in engine-tests-baseline.txt (the failures on every
+# platform). One "<suite>: <test>" per line; "? " before it: fails only
+# sometimes; text after " #" is a comment.
+
+# The foundLoc of a found chunk was wrong once in a full run, and right when
+# the test ran again
+? lcs: core/interface/interface: TestFoundLoc

@@ -1,0 +1,954 @@
+# Builds the OXT-Beyond engine for Linux x86_64 and arm64 on GitHub-hosted
+# runners. Both architectures use the same container image and the same steps,
+# so they are built identically.
+#
+# The container is Ubuntu 20.04, so the binaries need glibc 2.31 or newer
+# (Ubuntu 20.04+, Debian 11+, Fedora 32+, Raspberry Pi OS Bullseye+ 64-bit)
+# and no newer libstdc++ or libgcc_s than its GCC 10 ones; the Verify step
+# fails when an ELF file of the output needs more
+# (tools/ci/check_elf_floor.py). It is
+# also the newest Ubuntu that still ships Python 2.7, which gyp and
+# config.py need.
+#
+# Prebuilt libraries: LiveCode's download server no longer serves them, so
+# this workflow builds them from pinned upstream sources (prebuilt/versions/*)
+# with the scripts in prebuilt/, and keeps the resulting tarballs in the
+# GitHub Actions cache:
+#   OpenSSL, Curl, ICU  prebuilt/scripts/build-{openssl,curl,icu}.sh
+#   CEF (x86_64 only)   Spotify's CEF build, repackaged by build-cef.sh
+#   Thirdparty          the vendored thirdparty/ sources, built by gyp
+# A cache miss (a change to those scripts, to the versions, to thirdparty/ or
+# to the build settings, or an evicted cache) rebuilds them in the same job.
+#
+# Output: the artifact OXT-Beyond-linux-<arch>-bin holds linux-<arch>-bin
+# (engines, externals, toolchain, packaged extensions) as a tar.xz, without
+# the debug symbols; OXT-Beyond-linux-<arch>-symbols holds those, the *.dbg
+# files of the same folder, as a tar.xz to extract over it. Neither holds
+# the tools the build makes to build itself (tools/ci/list_build_tools.py:
+# GENTLE, which may not be redistributed, among them). Both are kept for
+# 30 days, like the packages; logs for 14.
+#
+# Checks: the build output's files, the glibc floor of every ELF file, the
+# server engine running a script, and the IDE compile check of the
+# checkout's IDE with the new development engine
+# (tools/ci/run_livecode_check.py compile --repo-layout).
+#
+# The job "Package linux-x86_64" then makes the Linux package from the
+# x86_64 build's two artifacts, on a plain ubuntu-24.04 runner (whose glibc
+# and OpenSSL 3 load every bundled xTalk extension, which the build's
+# Ubuntu 20.04 container cannot), and uploads, as the artifact
+# OXT-Beyond-linux-x86_64:
+#
+#   OXT-Beyond-<ver>-linux-x86_64.tar.xz           the program folder
+#                                                  OXT-Beyond-<ver>, with
+#                                                  the launcher oxt-beyond
+#                                                  and install.sh
+#   OXT-Beyond-<ver>-linux-x86_64-binaries.tar.xz  linux-x86_64-bin without
+#                                                  the *.dbg files, plus the
+#                                                  licence files
+#   OXT-Beyond-<ver>-linux-x86_64-symbols.tar.xz   the *.dbg files
+#   SHA256SUMS
+#
+# (tools/oxt/package.py --platform linux-x86_64, tools/oxt/package_dist.py),
+# after testing the tarball as users get it, extracted to a neutral folder:
+# the headless smoke test (which loads and calls every bundled extension),
+# the IDE compile check run through the launcher, ldd and the launcher's
+# library list against every ELF file (tools/ci/check_linux_libraries.py),
+# desktop-file-validate, and the launcher, install.sh and uninstall.sh in
+# scratch home folders (tools/ci/test_linux_package.py). The runtime
+# libraries it installs for that are the Debian packages of
+# Installer/linux/libraries.txt, the list the launcher checks. The external
+# assets and xTalk extension files are cached as in build-windows.yml; a
+# manual run can leave them out (inputs below, or the repository variables
+# OXT_NO_EXTERNAL_ASSETS / OXT_NO_XTALK_EXTENSIONS set to 1), a release build
+# never does. Linux arm64 is not packaged yet.
+#
+# Version: <ver> is the product version in ide/.version. A build of a tag
+# that starts with "v" fails straight away unless the tag is v<ver>, as in
+# build-windows.yml. OXT_BUILD_NUMBER is the input build-number when
+# release.yml gives one (the same for every job and platform of a
+# release); otherwise it is the UTC time at which the version step ran, as
+# YYYYMMDDHHMM, and the package job takes its own, when it starts
+# packaging.
+#
+# Releases: .github/workflows/release.yml calls this workflow (workflow_call)
+# for a tag that starts with "v" and for its dry runs, and publishes the
+# artifact OXT-Beyond-linux-x86_64 with the other platforms' packages; this
+# workflow no longer runs on tags of its own. The input release makes a
+# called run build as for a release (external assets and xTalk Suite
+# extensions never left out) also for a dry run on a branch. The release
+# waits for every job here, the arm64 build included.
+
+name: Build (Linux)
+
+on:
+  # No tags here: release.yml builds them (see the header)
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      no_external_assets:
+        description: >-
+          Package without the external assets of tools/oxt/external-assets.json
+          (no runtimes for other platforms), for testing while an asset is not
+          published yet
+        type: boolean
+        default: false
+      no_xtalk_extensions:
+        description: >-
+          Package without the xTalk Suite extensions of
+          tools/oxt/xtalk-extensions.json
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      build-number:
+        description: >-
+          OXT_BUILD_NUMBER for every job of the run (digits; release.yml
+          gives all three platforms the same); empty for the UTC time at
+          which each job starts
+        type: string
+        required: false
+        default: ''
+      release:
+        description: >-
+          Build as for a release: never leave out the external assets or the
+          xTalk Suite extensions
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # A called release build (release.yml) gets a group of its own, the
+  # caller's run id: in the caller's run github.ref is the tag or the
+  # branch of a dry run, and pushes to that branch must neither cancel the
+  # release build nor wait for it (see build-windows.yml)
+  group: build-linux-${{ inputs.release && format('release-{0}', github.run_id) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build linux-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ubuntu:20.04
+    timeout-minutes: 330
+    # built-<arch> is "true" once that leg has passed every step (the last
+    # step sets it). The package job needs it because a matrix job fails as
+    # a whole when any leg fails; outputs with names of their own are
+    # combined from the legs.
+    outputs:
+      built-x86_64: ${{ steps.built.outputs.built-x86_64 }}
+      built-arm64: ${{ steps.built.outputs.built-arm64 }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ARCH: ${{ matrix.arch }}
+      MODE: release
+      BUILDTYPE: Release
+    steps:
+      - name: Install build tools and headers
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential gcc g++ make perl bison flex gawk pkg-config \
+            python2 python-is-python2 python3 openjdk-11-jdk-headless \
+            git curl ca-certificates bzip2 xz-utils zip unzip file binutils \
+            libx11-dev libxext-dev libxrender-dev libxft-dev libxinerama-dev \
+            libxv-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev \
+            libexpat1-dev libgtk2.0-dev libpopt-dev liblcms2-dev
+          # (sed rather than head: GitHub's bash uses pipefail, and head
+          # closing the pipe early would fail the step with SIGPIPE)
+          gcc --version | sed -n 1p
+          python --version
+          ldd --version | sed -n 1p
+          echo "Processors: $(nproc)"
+
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          # No step pushes or fetches, so the token need not stay in .git/config
+          persist-credentials: false
+
+      # The version gate of build-windows.yml: a tag build fails straight
+      # away when the tag is not "v" followed by ide/.version, so that no
+      # platform builds (and none publishes) files under another version.
+      # (Called by release.yml, github.ref_type and github.ref_name are the
+      # caller's: the tag of the release.) One build number for every file
+      # of this job, OXT_BUILD_NUMBER: release.yml's input, else the UTC
+      # time now, as YYYYMMDDHHMM (what tools/oxt/package.py writes into
+      # .buildnumber). The step runs after the tool install because the
+      # checkout needs the container's git.
+      - name: Read the product version
+        id: product
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          BUILD_NUMBER_INPUT: ${{ inputs.build-number }}
+        run: |
+          version=$(tr -d '\r' < ide/.version)
+          # Trim white space at both ends, like the Trim() of the Windows step
+          version="${version#"${version%%[![:space:]]*}"}"
+          version="${version%"${version##*[![:space:]]}"}"
+          re='^[0-9]+(\.[0-9]+){1,3}(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
+          if ! [[ $version =~ $re ]]; then
+            echo "::error::ide/.version contains '$version'; expected a version such as 0.0.1 or 0.1.0-beta.1"
+            exit 1
+          fi
+          # [vV]: the Windows step's -like 'v*' ignores case
+          if [ "$REF_TYPE" = tag ] && [[ $REF_NAME == [vV]* ]] && [ "$REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $REF_NAME does not match ide/.version ($version); the tag for this version is v$version"
+            exit 1
+          fi
+          if [ -n "$BUILD_NUMBER_INPUT" ]; then
+            # Digits only, as tools/oxt/package.py requires
+            digits='^[0-9]{1,20}$'
+            if ! [[ $BUILD_NUMBER_INPUT =~ $digits ]]; then
+              echo "::error::The input build-number is '$BUILD_NUMBER_INPUT'; expected digits, such as 202610011200"
+              exit 1
+            fi
+            build_number=$BUILD_NUMBER_INPUT
+          else
+            build_number=$(date -u +%Y%m%d%H%M)
+          fi
+          echo "OXT-Beyond $version, build number $build_number"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build-number=$build_number" >> "$GITHUB_OUTPUT"
+          echo "OXT_BUILD_NUMBER=$build_number" >> "$GITHUB_ENV"
+
+      - name: Mark the workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # The key covers everything the prebuilt tarballs are made from: library
+      # versions, the prebuilt scripts, the vendored thirdparty/ tree and the
+      # gyp settings the Thirdparty libraries are compiled with.
+      - name: Compute the prebuilt libraries cache key
+        id: prebuilt-key
+        run: |
+          scripts=$(cat prebuilt/versions/* prebuilt/scripts/*.sh prebuilt/scripts/*.inc \
+                        prebuilt/build-libraries.sh prebuilt/package-libs.sh \
+                        prebuilt/thirdparty.gyp config/*.gypi | sha256sum | cut -c1-16)
+          thirdparty=$(git rev-parse HEAD:thirdparty | cut -c1-12)
+          echo "key=prebuilt-linux-${ARCH}-focal-${scripts}-${thirdparty}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore prebuilt libraries
+        id: prebuilt-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: prebuilt/packaged
+          key: ${{ steps.prebuilt-key.outputs.key }}
+
+      - name: Build OpenSSL, Curl, ICU and CEF from source
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        working-directory: prebuilt
+        run: |
+          export PREBUILT_MAKE_JOBS="$(nproc)"
+          PREBUILT_BUILD_LIBS="openssl curl icu cef" ./build-libraries.sh linux "$ARCH"
+          ./package-libs.sh linux "$ARCH"
+          ls -la packaged
+
+      # thirdparty-prebuilts is a gyp target in the engine's own build tree.
+      # Its OpenSSL headers dependency runs fetch-libraries.sh, which must not
+      # look for the Thirdparty tarball that is still being built.
+      - name: Build the Thirdparty libraries from thirdparty/
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        working-directory: prebuilt
+        env:
+          PREBUILT_LINUX_LIBS: OpenSSL Curl ICU CEF
+          PREBUILT_SKIP_VERIFY: '1'
+        run: |
+          export PREBUILT_LOCAL_DIR="$PWD/packaged"
+          export PREBUILT_MAKE_JOBS="$(nproc)"
+          PREBUILT_BUILD_LIBS=thirdparty ./build-libraries.sh linux "$ARCH"
+          ./package-libs.sh linux "$ARCH"
+          ls -la packaged
+          (cd packaged && sha256sum *.tar.bz2)
+
+      - name: Save prebuilt libraries to the cache
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: prebuilt/packaged
+          key: ${{ steps.prebuilt-key.outputs.key }}
+
+      # The tarballs were built above (or restored from the cache), so they
+      # have no entries in prebuilt/SHA256SUMS, which lists published files.
+      - name: Fetch prebuilt libraries
+        run: |
+          echo "PREBUILT_LOCAL_DIR=$PWD/prebuilt/packaged" >> "$GITHUB_ENV"
+          echo "PREBUILT_SKIP_VERIFY=1" >> "$GITHUB_ENV"
+          cd prebuilt
+          PREBUILT_LOCAL_DIR="$PWD/packaged" PREBUILT_SKIP_VERIFY=1 ./fetch-libraries.sh linux "$ARCH"
+
+      - name: Configure
+        run: make config-linux-"$ARCH"
+
+      # The final copy into linux-<arch>-bin runs as a second make: its input
+      # out/Release/Externals is only created as a side effect of the CEF
+      # copies, so in one parallel make it could be reached before it existed.
+      - name: Build
+        id: build
+        run: |
+          make -C build-linux-"$ARCH"/livecode LiveCode-all debug-symbols BUILDTYPE=Release -j"$(nproc)"
+          make -C build-linux-"$ARCH"/livecode default BUILDTYPE=Release -j"$(nproc)"
+
+      # If a tool built during the build crashes (as lc-compile once did on
+      # arm64), rerun the LCB module step under catchsegv for a backtrace
+      - name: Diagnose a crash during the build
+        if: failure() && steps.build.outcome == 'failure'
+        continue-on-error: true
+        working-directory: build-linux-${{ matrix.arch }}/livecode
+        run: |
+          set +e +o pipefail
+          target=out/Release/obj/gen/engine_lcb_modules.cpp
+          seg=$(ls /lib/*/libSegFault.so /lib/libSegFault.so 2>/dev/null | sed -n 1p)
+          echo "== Rerun under libSegFault ($seg)"
+          LD_PRELOAD="$seg" SEGFAULT_SIGNALS="segv bus abrt ill" \
+            make V=1 BUILDTYPE=Release "$target" > "$RUNNER_TEMP/diag.log" 2>&1
+          echo "exit: $?"
+          tail -100 "$RUNNER_TEMP/diag.log"
+          # Symbolised backtrace: rerun the lc-compile command make printed
+          echo "== Rerun under gdb"
+          apt-get install -y --no-install-recommends gdb > /dev/null 2>&1
+          args=$(grep -o '"[^"]*/lc-compile" --bootstrap.*' "$RUNNER_TEMP/diag.log" | sed -n 1p)
+          if [ -n "$args" ]; then
+            eval "set -- $args"
+            (cd ../../engine && gdb -batch -ex run -ex 'bt 25' -ex 'bt -12' \
+               -ex 'info registers pc sp' --args "$@") 2>&1 | tail -80
+          fi
+
+      - name: Verify build output
+        run: |
+          B="linux-$ARCH-bin"
+          ls -la "$B"
+          missing=0
+          for f in LiveCode-Community standalone-community installer server-community \
+                   revsecurity.so revpdfprinter.so revxml.so revzip.so revdb.so \
+                   dbsqlite.so dbmysql.so dbodbc.so dbpostgresql.so \
+                   lc-compile lc-run; do
+            if [ ! -e "$B/$f" ]; then echo "::error::missing $B/$f"; missing=1; fi
+          done
+          if [ "$ARCH" = x86_64 ] && [ ! -e "$B/revbrowser.so" ]; then
+            echo "::error::missing $B/revbrowser.so"; missing=1
+          fi
+          test -d "$B/packaged_extensions" || { echo "::error::missing $B/packaged_extensions"; missing=1; }
+          test -d "$B/modules/lci" || { echo "::error::missing $B/modules/lci"; missing=1; }
+          [ "$missing" = 0 ]
+          file "$B/LiveCode-Community" "$B/standalone-community"
+          # Save as Standalone only accepts non-PIE engines (deploy_linux.cpp)
+          readelf -h "$B/standalone-community" | grep 'EXEC (Executable file)'
+          # The oldest Linux the header promises is this container's
+          # Ubuntu 20.04: glibc 2.31, the libstdc++ of GCC 10
+          # (GLIBCXX_3.4.28, CXXABI_1.3.12) and its libgcc_s (GCC_7.0.0;
+          # the next versions, GCC_12.0.0 and GCC_13.0.0, hold the _Float16
+          # and __bf16 helpers a link with GCC 12 or newer can take from
+          # libgcc_s). No ELF file of the folder (executables and shared
+          # objects in every subfolder, CEF included; not the .dbg debug
+          # files) may need a newer version of these than that system has,
+          # and each must be for this architecture. Other version needs
+          # (CEF's NSS and ALSA) are only reported. What is linked in this
+          # container cannot need more than it has, so this catches
+          # prebuilt files such as CEF or extension libraries, and a change
+          # of build image. The report lists the highest version each file
+          # needs.
+          python3 tools/ci/check_elf_floor.py "$B" --machine "$ARCH" --exclude '*.dbg' \
+            --max GLIBC=2.31 --max GLIBCXX=3.4.28 --max CXXABI=1.3.12 --max GCC=7.0.0
+
+      - name: Smoke test (server engine)
+        run: |
+          printf '<?lc\nput the version && the buildNumber & return\nput the platform && the processor & return\nput sha1Digest("abc") is not empty & return\n?>\n' > "$RUNNER_TEMP/smoke.lc"
+          ./linux-"$ARCH"-bin/server-community "$RUNNER_TEMP/smoke.lc" | tee "$RUNNER_TEMP/smoke.out"
+          grep -q '^9\.7' "$RUNNER_TEMP/smoke.out"
+
+      # The .dbg files, the debug information that
+      # tools/extract-debug-symbols.sh splits off every binary (about 160 MB
+      # per engine, most of the folder), go into a tarball of their own and
+      # the bin tarball goes without them. Both hold the folder
+      # linux-<arch>-bin, so extracting the symbols over the binaries puts
+      # every .dbg next to its binary, where gdb finds it through the
+      # binary's .gnu_debuglink. xz uses every processor (-T0).
+      #
+      # Neither holds the tools the build makes to build itself, nor their
+      # .dbg files (tools/ci/list_build_tools.py, the rule of the release
+      # archives): gentle-target and reflex-target are GENTLE 97, which may
+      # not be redistributed (THIRD-PARTY-NOTICES.md "GENTLE"), and these
+      # artifacts can be downloaded. Nothing that uses them needs those
+      # tools: the package job's package.py never installs them and
+      # package_dist.py leaves them out, and the IDE compile check below
+      # runs on the build folder itself. The listing at the end is the
+      # guard: no entry named gentle-* or reflex-* may reach either
+      # tarball.
+      - name: Package the bin folder and the debug symbols
+        env:
+          XZ_OPT: -T0
+        run: |
+          B="linux-$ARCH-bin"
+          python3 tools/ci/list_build_tools.py "$B" > "$RUNNER_TEMP/build-tools.list"
+          echo "Left out (the build's own tools): $(tr '\n' ' ' < "$RUNNER_TEMP/build-tools.list")"
+          # (grep -v exits 1 when it selects nothing; the check below reports that)
+          find "$B" -type f -name '*.dbg' | sort | grep -vxF -f "$RUNNER_TEMP/build-tools.list" \
+            > "$RUNNER_TEMP/dbg.list" || true
+          if [ ! -s "$RUNNER_TEMP/dbg.list" ]; then
+            echo "::error::no .dbg files in $B; the build's debug-symbols target makes them"; exit 1
+          fi
+          echo "$(wc -l < "$RUNNER_TEMP/dbg.list") debug symbol files"
+          # (--exclude and -X before the folder: GNU tar applies them to the names after it)
+          tar -cJf "OXT-Beyond-linux-$ARCH-bin.tar.xz" --exclude='*.dbg' -X "$RUNNER_TEMP/build-tools.list" "$B"
+          tar -cJf "OXT-Beyond-linux-$ARCH-symbols.tar.xz" -T "$RUNNER_TEMP/dbg.list"
+          ls -l OXT-Beyond-linux-"$ARCH"-*.tar.xz
+          for t in OXT-Beyond-linux-"$ARCH"-bin.tar.xz OXT-Beyond-linux-"$ARCH"-symbols.tar.xz; do
+            tar -tJf "$t" > "$RUNNER_TEMP/members.txt"
+            if grep -E '(^|/)(gentle|reflex)-' "$RUNNER_TEMP/members.txt"; then
+              echo "::error::$t holds the GENTLE files above, which may not be redistributed"; exit 1
+            fi
+          done
+
+      - name: Upload the bin folder
+        uses: actions/upload-artifact@v7
+        with:
+          name: OXT-Beyond-linux-${{ matrix.arch }}-bin
+          path: OXT-Beyond-linux-${{ matrix.arch }}-bin.tar.xz
+          if-no-files-found: error
+          retention-days: 30
+          # The tarball is compressed already
+          compression-level: 0
+
+      - name: Upload the debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: OXT-Beyond-linux-${{ matrix.arch }}-symbols
+          path: OXT-Beyond-linux-${{ matrix.arch }}-symbols.tar.xz
+          if-no-files-found: error
+          retention-days: 30
+          # The tarball is compressed already
+          compression-level: 0
+
+      # The IDE compile check (tools/ci/ide-compile-check.livecodescript,
+      # the baseline of tools/ci/ide-compile-baseline.txt plus its Linux
+      # supplement) over the checkout's IDE, run by the development engine
+      # just built, before anything is packaged: run_livecode_check.py
+      # --repo-layout assembles Toolset, Plugins and Extensions from ide/,
+      # ide-support/ and the build's packaged extensions. After the upload,
+      # so a failure here still leaves the build to look at. -ui needs no X
+      # display. python is Python 2 (gyp, config.py); python3 (3.8 on
+      # focal) comes from the first apt step, for the checks.
+      - name: IDE compile check (repository)
+        timeout-minutes: 20
+        run: |
+          python3 --version
+          python3 tools/ci/run_livecode_check.py compile --repo-layout --bin "linux-$ARCH-bin" \
+            --log ide-compile-check.log
+
+      # The engine test suites of tests/ (tools/ci/run_engine_tests.py): the
+      # LiveCode Script tests of tests/lcs, each run on its own by the
+      # standalone engine just built, with -ui and a time limit, the
+      # LiveCode Builder tests (each handler in its own lc-run), and the
+      # LiveCode Builder compiler and LiveCode Script parser tests. A
+      # failure that is not in tools/ci/engine-tests-baseline.txt or its
+      # Linux supplement fails the step (a failed test is run once more
+      # first, and one that then passes is only reported as flaky); a
+      # baseline entry that passed is reported, to be removed. The job
+      # summary lists both, the log has every failed test's output. CI is
+      # "true" here, so the tests that act on the desktop run too. --jobs 4:
+      # the tests of four files at a time (the runners have four processors).
+      - name: Engine tests
+        timeout-minutes: 45
+        run: python3 tools/ci/run_engine_tests.py --bin "linux-$ARCH-bin" --jobs 4 --log engine-tests.log
+
+      # The job output built-<arch> (see outputs above): only a leg that
+      # got here packages
+      - name: Record the finished build
+        id: built
+        run: echo "built-$ARCH=true" >> "$GITHUB_OUTPUT"
+
+      # Paths in the workspace: in a container job runner.temp names the
+      # host's folder, which the upload action does not see
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-logs-linux-${{ matrix.arch }}
+          path: |
+            prebuilt/build/**/config.log
+            prebuilt/build/**/*.log
+            ide-compile-check.log
+            engine-tests.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The 32-bit Linux build, for the standalone runtime Runtime/Linux/x86-32
+  # (the IDE's "Linux" target), which the runtimes asset carries for every
+  # package (tools/oxt/make_runtimes_asset.py --builds). It is built from
+  # this repository like the legs above and checked the same ways (files,
+  # ELF floor, server engine, IDE compile check, engine tests), but in a
+  # Debian 11 i386 container that the job starts itself
+  # (tools/ci/i386-container.sh): Ubuntu has no i386 images after 18.04,
+  # and GitHub's actions do not run in a 32-bit job container. Debian 11 has
+  # the glibc 2.31 and the GCC 10 libstdc++ of the other legs' Ubuntu 20.04.
+  # There is no CEF, as on arm64 (CEF's 32-bit Linux builds ended with CEF
+  # 101; OpenXTalk Lite 1.15's x86-32 runtime had none either). Outputs: the
+  # artifacts OXT-Beyond-linux-x86-bin and -symbols, as for the other legs;
+  # nothing is packaged.
+  build-x86:
+    name: Build linux-x86
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    env:
+      ARCH: x86
+      MODE: release
+      BUILDTYPE: Release
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Start the i386 container
+        timeout-minutes: 20
+        run: tools/ci/i386-container.sh start
+
+      # As the legs above, with the container's own name and the script
+      # that sets it up
+      - name: Compute the prebuilt libraries cache key
+        id: prebuilt-key
+        run: |
+          scripts=$(cat prebuilt/versions/* prebuilt/scripts/*.sh prebuilt/scripts/*.inc \
+                        prebuilt/build-libraries.sh prebuilt/package-libs.sh \
+                        prebuilt/thirdparty.gyp config/*.gypi tools/ci/i386-container.sh | sha256sum | cut -c1-16)
+          thirdparty=$(git rev-parse HEAD:thirdparty | cut -c1-12)
+          echo "key=prebuilt-linux-${ARCH}-bullseye-${scripts}-${thirdparty}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore prebuilt libraries
+        id: prebuilt-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: prebuilt/packaged
+          key: ${{ steps.prebuilt-key.outputs.key }}
+
+      - name: Build OpenSSL, Curl and ICU from source
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        run: |
+          tools/ci/i386-container.sh run 'cd prebuilt && export PREBUILT_MAKE_JOBS="$(nproc)" &&
+            PREBUILT_BUILD_LIBS="openssl curl icu" ./build-libraries.sh linux x86 &&
+            ./package-libs.sh linux x86 && ls -la packaged'
+
+      - name: Build the Thirdparty libraries from thirdparty/
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        env:
+          PREBUILT_LINUX_LIBS: OpenSSL Curl ICU
+          PREBUILT_SKIP_VERIFY: '1'
+        run: |
+          tools/ci/i386-container.sh run 'cd prebuilt && export PREBUILT_LOCAL_DIR="$PWD/packaged" PREBUILT_MAKE_JOBS="$(nproc)" &&
+            PREBUILT_BUILD_LIBS=thirdparty ./build-libraries.sh linux x86 &&
+            ./package-libs.sh linux x86 && ls -la packaged && (cd packaged && sha256sum *.tar.bz2)'
+
+      - name: Save prebuilt libraries to the cache
+        if: steps.prebuilt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: prebuilt/packaged
+          key: ${{ steps.prebuilt-key.outputs.key }}
+
+      - name: Fetch prebuilt libraries
+        run: |
+          echo "PREBUILT_LOCAL_DIR=$PWD/prebuilt/packaged" >> "$GITHUB_ENV"
+          echo "PREBUILT_SKIP_VERIFY=1" >> "$GITHUB_ENV"
+          tools/ci/i386-container.sh run 'cd prebuilt && PREBUILT_LOCAL_DIR="$PWD/packaged" PREBUILT_SKIP_VERIFY=1 ./fetch-libraries.sh linux x86'
+
+      - name: Configure
+        run: tools/ci/i386-container.sh run 'make config-linux-x86'
+
+      - name: Build
+        run: |
+          tools/ci/i386-container.sh run 'make -C build-linux-x86/livecode LiveCode-all debug-symbols BUILDTYPE=Release -j"$(nproc)" &&
+            make -C build-linux-x86/livecode default BUILDTYPE=Release -j"$(nproc)"'
+
+      # As for the other legs, without revbrowser (no CEF). --machine x86:
+      # every ELF file is i386.
+      - name: Verify build output
+        run: |
+          tools/ci/i386-container.sh run '
+            B=linux-x86-bin
+            ls -la "$B"
+            missing=0
+            for f in LiveCode-Community standalone-community installer server-community \
+                     revsecurity.so revpdfprinter.so revxml.so revzip.so revdb.so \
+                     dbsqlite.so dbmysql.so dbodbc.so dbpostgresql.so \
+                     lc-compile lc-run; do
+              if [ ! -e "$B/$f" ]; then echo "::error::missing $B/$f"; missing=1; fi
+            done
+            test -d "$B/packaged_extensions" || { echo "::error::missing $B/packaged_extensions"; missing=1; }
+            test -d "$B/modules/lci" || { echo "::error::missing $B/modules/lci"; missing=1; }
+            [ "$missing" = 0 ]
+            file "$B/LiveCode-Community" "$B/standalone-community"
+            readelf -h "$B/standalone-community" | grep "EXEC (Executable file)"
+            python3 tools/ci/check_elf_floor.py "$B" --machine x86 --exclude "*.dbg" \
+              --max GLIBC=2.31 --max GLIBCXX=3.4.28 --max CXXABI=1.3.12 --max GCC=7.0.0'
+
+      - name: Smoke test (server engine)
+        run: |
+          printf '<?lc\nput the version && the buildNumber & return\nput the platform && the processor & return\nput sha1Digest("abc") is not empty & return\n?>\n' > "$RUNNER_TEMP/smoke.lc"
+          tools/ci/i386-container.sh run './linux-x86-bin/server-community "$RUNNER_TEMP/smoke.lc" | tee "$RUNNER_TEMP/smoke.out"'
+          grep -q '^9\.7' "$RUNNER_TEMP/smoke.out"
+          grep -q ' x86$' "$RUNNER_TEMP/smoke.out"
+
+      # As for the other legs (see "Package the bin folder and the debug
+      # symbols" above)
+      - name: Package the bin folder and the debug symbols
+        run: |
+          tools/ci/i386-container.sh run '
+            export XZ_OPT=-T0
+            B=linux-x86-bin
+            python3 tools/ci/list_build_tools.py "$B" > "$RUNNER_TEMP/build-tools.list"
+            echo "Left out (the tools the build makes for itself): $(tr "\n" " " < "$RUNNER_TEMP/build-tools.list")"
+            find "$B" -type f -name "*.dbg" | sort | grep -vxF -f "$RUNNER_TEMP/build-tools.list" \
+              > "$RUNNER_TEMP/dbg.list" || true
+            if [ ! -s "$RUNNER_TEMP/dbg.list" ]; then
+              echo "::error::no .dbg files in $B; the debug-symbols target of the build makes them"; exit 1
+            fi
+            tar -cJf OXT-Beyond-linux-x86-bin.tar.xz --exclude="*.dbg" -X "$RUNNER_TEMP/build-tools.list" "$B"
+            tar -cJf OXT-Beyond-linux-x86-symbols.tar.xz -T "$RUNNER_TEMP/dbg.list"
+            ls -l OXT-Beyond-linux-x86-*.tar.xz
+            for t in OXT-Beyond-linux-x86-bin.tar.xz OXT-Beyond-linux-x86-symbols.tar.xz; do
+              tar -tJf "$t" > "$RUNNER_TEMP/members.txt"
+              if grep -E "(^|/)(gentle|reflex)-" "$RUNNER_TEMP/members.txt"; then
+                echo "::error::$t holds the GENTLE files above, which may not be redistributed"; exit 1
+              fi
+            done'
+
+      - name: Upload the bin folder
+        uses: actions/upload-artifact@v7
+        with:
+          name: OXT-Beyond-linux-x86-bin
+          path: OXT-Beyond-linux-x86-bin.tar.xz
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload the debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: OXT-Beyond-linux-x86-symbols
+          path: OXT-Beyond-linux-x86-symbols.tar.xz
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: IDE compile check (repository)
+        timeout-minutes: 20
+        run: |
+          tools/ci/i386-container.sh run 'python3 tools/ci/run_livecode_check.py compile --repo-layout --bin linux-x86-bin \
+            --platform linux-x86 --log ide-compile-check.log'
+
+      # The engine test suites, as for the other legs (with this leg's
+      # baseline supplement engine-tests-baseline-linux-x86.txt, if any)
+      - name: Engine tests
+        timeout-minutes: 45
+        run: |
+          tools/ci/i386-container.sh run 'python3 tools/ci/run_engine_tests.py --bin linux-x86-bin --arch x86 --jobs 4 \
+            --log engine-tests.log'
+
+      # A standalone built from this build's runtime (standalone-community)
+      # by its development engine, as the IDE's builder does at its core
+      # ("_internal deploy linux"), then run in the container
+      # (tools/ci/standalone_check.py)
+      - name: Standalone check (build output)
+        timeout-minutes: 15
+        run: |
+          tools/ci/i386-container.sh run 'python3 tools/ci/standalone_check.py --engine linux-x86-bin/LiveCode-Community \
+            --runtime linux-x86-bin/standalone-community --platform linux-x86 --log standalone-check.log'
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-logs-linux-x86
+          path: |
+            prebuilt/build/**/config.log
+            prebuilt/build/**/*.log
+            ide-compile-check.log
+            engine-tests.log
+            standalone-check.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop the i386 container
+        if: always()
+        run: tools/ci/i386-container.sh stop
+
+  # The Linux x86_64 package, from the build's artifacts (see the header).
+  # It waits for both build legs (a job cannot need one leg of a matrix)
+  # but runs whenever the x86_64 one passed, so that a failed arm64 build
+  # does not hide the package (and always when the whole build passed,
+  # whatever the outputs say). On the runner itself, not in the build's
+  # container: tests need the ubuntu-24.04 system, the user a package
+  # would find there, and sudo for apt.
+  package:
+    name: Package linux-x86_64
+    needs: build
+    if: ${{ !cancelled() && (needs.build.result == 'success' || needs.build.outputs.built-x86_64 == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Not in a folder named *-bin or _build: nothing here should look
+      # like a build output folder (see "Extract the package" below)
+      - name: Download the build
+        uses: actions/download-artifact@v8
+        with:
+          name: OXT-Beyond-linux-x86_64-bin
+          path: ${{ runner.temp }}/ci-build
+
+      - name: Download the debug symbols
+        uses: actions/download-artifact@v8
+        with:
+          name: OXT-Beyond-linux-x86_64-symbols
+          path: ${{ runner.temp }}/ci-symbols
+
+      # The runtime libraries the package needs, from the list the launcher
+      # checks (Installer/linux/libraries.txt: every "core", "gui" and
+      # "browser" library, so that the engine, the IDE's GUI libraries and
+      # CEF all resolve for ldd), and desktop-file-utils for
+      # desktop-file-validate and update-desktop-database. Ubuntu 24.04
+      # renamed some of the packages for the 64-bit time_t transition
+      # (libasound2t64, which apt does not find by its old name), so the
+      # name with "t64" is used where there is such a package, as the
+      # launcher's hint does.
+      - name: Install the runtime libraries and desktop tools
+        run: |
+          sudo apt-get update
+          # mplayer, Xvfb and xauth: the browser and player check
+          pkgs=(desktop-file-utils shared-mime-info xz-utils mplayer xvfb xauth)
+          while read -r soname use deb rpm rest; do
+            case $soname in ''|'#'*) continue ;; esac
+            if apt-cache show --no-all-versions "${deb}t64" > /dev/null 2>&1; then
+              deb="${deb}t64"
+            fi
+            case " ${pkgs[*]} " in *" $deb "*) ;; *) pkgs+=("$deb") ;; esac
+          done < Installer/linux/libraries.txt
+          echo "Installing: ${pkgs[*]}"
+          # (sudo does not pass the job's environment on)
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${pkgs[@]}"
+          python3 --version
+          ldd --version | sed -n 1p
+
+      # The same caches as build-windows.yml (see there): the external
+      # assets' archives and the xTalk extensions' files. The cache version
+      # includes the runner's OS, so these entries are Linux's own.
+      - name: Restore cached external assets
+        id: assets-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: prebuilt/fetched-assets/*.zip
+          key: oxt-external-assets-${{ hashFiles('tools/oxt/external-assets.json') }}
+
+      - name: Restore cached xTalk extension files
+        id: xtalk-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: prebuilt/fetched-assets/xtalk
+          key: oxt-xtalk-extensions-${{ hashFiles('tools/oxt/xtalk-extensions.json') }}
+
+      # Stages the program folder in $RUNNER_TEMP/stage/OXT-Beyond-<ver>
+      # (package.py --bin-tar extracts the build tarball itself, keeping
+      # modes and links) and writes the three archives and SHA256SUMS to
+      # dist/ (package_dist.py; the symbols come from the symbols artifact).
+      # The build number is release.yml's input (the build job checked it),
+      # else the time packaging starts. Release builds (a tag, or the input
+      # release) never leave anything out.
+      - name: Package
+        id: package
+        timeout-minutes: 45
+        env:
+          OXT_ASSETS_CACHE: ${{ github.workspace }}/prebuilt/fetched-assets
+          NO_EXTERNAL_ASSETS: ${{ github.ref_type != 'tag' && !inputs.release && (inputs.no_external_assets == true || vars.OXT_NO_EXTERNAL_ASSETS == '1') }}
+          NO_XTALK_EXTENSIONS: ${{ github.ref_type != 'tag' && !inputs.release && (inputs.no_xtalk_extensions == true || vars.OXT_NO_XTALK_EXTENSIONS == '1') }}
+          BUILD_NUMBER_INPUT: ${{ inputs.build-number }}
+          BIN_TAR: ${{ runner.temp }}/ci-build/OXT-Beyond-linux-x86_64-bin.tar.xz
+          SYMBOLS_TAR: ${{ runner.temp }}/ci-symbols/OXT-Beyond-linux-x86_64-symbols.tar.xz
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          for f in "$BIN_TAR" "$SYMBOLS_TAR"; do
+            if [ ! -f "$f" ]; then echo "::error::$f is not in the downloaded artifact"; ls -laR "$RUNNER_TEMP"/ci-*; exit 1; fi
+          done
+          OXT_BUILD_NUMBER=${BUILD_NUMBER_INPUT:-$(date -u +%Y%m%d%H%M)}
+          export OXT_BUILD_NUMBER
+          args=()
+          if [ "$NO_EXTERNAL_ASSETS" = true ]; then
+            echo "::warning title=Package::External assets left out (no_external_assets input or OXT_NO_EXTERNAL_ASSETS variable): the package has no standalone runtimes for other platforms."
+            args+=(--no-external-assets)
+          fi
+          if [ "$NO_XTALK_EXTENSIONS" = true ]; then
+            echo "::warning title=Package::xTalk Suite extensions left out (no_xtalk_extensions input or OXT_NO_XTALK_EXTENSIONS variable)."
+            args+=(--no-xtalk-extensions)
+          fi
+          python3 tools/oxt/package.py --platform linux-x86_64 --bin-tar "$BIN_TAR" \
+            --out "$RUNNER_TEMP/stage" --summary-json "$RUNNER_TEMP/stage-summary.json" "${args[@]}" \
+            2>&1 | tee "$RUNNER_TEMP/logs/package.log"
+          python3 tools/oxt/package_dist.py --summary "$RUNNER_TEMP/stage-summary.json" \
+            --bin-tar "$BIN_TAR" --symbols-tar "$SYMBOLS_TAR" --out dist \
+            2>&1 | tee -a "$RUNNER_TEMP/logs/package.log"
+
+      - name: Save external assets to the cache
+        if: always() && steps.assets-cache.outputs.cache-hit != 'true' && hashFiles('prebuilt/fetched-assets/*.zip') != ''
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: prebuilt/fetched-assets/*.zip
+          key: ${{ steps.assets-cache.outputs.cache-primary-key }}
+
+      - name: Save xTalk extension files to the cache
+        if: always() && steps.xtalk-cache.outputs.cache-hit != 'true' && hashFiles('prebuilt/fetched-assets/xtalk/**') != ''
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: prebuilt/fetched-assets/xtalk
+          key: ${{ steps.xtalk-cache.outputs.cache-primary-key }}
+
+      # As a user does: tar -xJf into an ordinary folder. A folder named
+      # _build or *-bin on the way would make the engine run the IDE of a
+      # source checkout (repository mode), so the tests run here, never
+      # from the stage or the build.
+      - name: Extract the package to a neutral folder
+        env:
+          PACKAGE: ${{ steps.package.outputs.package }}
+          PACKAGE_ROOT: ${{ steps.package.outputs.package-root }}
+        run: |
+          (cd dist && sha256sum -c SHA256SUMS)
+          tar -tJf "$PACKAGE" > "$RUNNER_TEMP/package-files.txt"
+          tops=$(cut -d/ -f1 "$RUNNER_TEMP/package-files.txt" | sort -u)
+          if [ "$tops" != "$PACKAGE_ROOT" ]; then
+            echo "::error::$PACKAGE must hold the one folder $PACKAGE_ROOT, not: $tops"; exit 1
+          fi
+          # No folder or file named _build or *-bin anywhere in it
+          # (package_dist.py refuses the exact repository-mode names; this
+          # is the wider rule)
+          if grep -E '(^|/)(_build|[^/]*-bin)(/|$)' "$RUNNER_TEMP/package-files.txt"; then
+            echo "::error::$PACKAGE has the paths above, named _build or *-bin"; exit 1
+          fi
+          test_dir="$RUNNER_TEMP/oxt-test"
+          rm -rf "$test_dir"
+          mkdir -p "$test_dir"
+          tar -xJf "$PACKAGE" -C "$test_dir"
+          root="$test_dir/$PACKAGE_ROOT"
+          for f in OXT-Beyond oxt-beyond install.sh uninstall.sh; do
+            if [ ! -x "$root/$f" ]; then echo "::error::$PACKAGE: $f is missing or not executable"; exit 1; fi
+          done
+          ls -la "$root"
+          echo "OXT_ROOT=$root" >> "$GITHUB_ENV"
+
+      # The engine itself, headless: script engine, ICU, OpenSSL, SQLite,
+      # revXML, revZip, and every bundled xTalk extension loaded and called
+      # (run_livecode_check.py extracts the tarball again, to its own
+      # neutral folder)
+      - name: Smoke test (package, headless)
+        timeout-minutes: 15
+        env:
+          PACKAGE: ${{ steps.package.outputs.package }}
+        run: |
+          python3 tools/ci/run_livecode_check.py smoke --package "$PACKAGE" --platform linux-x86_64 \
+            --log "$RUNNER_TEMP/logs/smoke-test.log"
+
+      # Every IDE script of the extracted package, compiled by its engine
+      # started through the launcher (with -ui the launcher needs only the
+      # "core" libraries and execs the engine with the arguments unchanged)
+      - name: IDE compile check (package, through the launcher)
+        timeout-minutes: 20
+        run: |
+          python3 tools/ci/run_livecode_check.py compile --install "$OXT_ROOT" --engine "$OXT_ROOT/oxt-beyond" \
+            --platform linux-x86_64 --log "$RUNNER_TEMP/logs/ide-compile-check.log"
+
+      # A standalone built from each runtime of the package (Linux x86-64
+      # and x86, Windows x86-64 and x86) by its engine, as the IDE's builder
+      # does at its core ("_internal deploy"); the Linux x86-64 one is run,
+      # the others checked as files of their format and architecture. Each
+      # runtime folder's binaries are checked first
+      # (tools/ci/standalone_check.py)
+      - name: Standalone check
+        timeout-minutes: 15
+        run: |
+          python3 tools/ci/standalone_check.py --install "$OXT_ROOT" --platform linux-x86_64 --targets all \
+            --log "$RUNNER_TEMP/logs/standalone-check.log"
+
+      # The browser widget, revBrowser (CEF) and the player (mplayer) in a
+      # standalone of the package, with a screen (Xvfb): a page loads and
+      # its JavaScript calls back into the script, a WAV and an MP4 file
+      # play, pause and end, and the player's controller plays, pauses and
+      # seeks when clicked (tools/ci/media_check.py; the snapshots of the
+      # controller go with the logs)
+      - name: Browser and player check
+        timeout-minutes: 10
+        run: |
+          python3 tools/ci/media_check.py --install "$OXT_ROOT" --platform linux-x86_64 \
+            --log "$RUNNER_TEMP/logs/media-check.log" --snapshots "$RUNNER_TEMP/logs/media-snapshots"
+
+      # ldd over every x86_64 ELF file of the package (engine, externals,
+      # CEF and its helpers, toolchain, extension libraries): nothing "not
+      # found" now that the list's packages are installed, and every
+      # library they need (DT_NEEDED) or the engine loads with dlopen
+      # (engine/src/linux.stubs) is in the launcher's list, the base system
+      # or the package
+      - name: Check the system libraries (ldd and the launcher's list)
+        run: |
+          python3 tools/ci/check_linux_libraries.py --root "$OXT_ROOT" --repo . \
+            --json "$RUNNER_TEMP/logs/linux-libraries.json"
+
+      # The package's desktop entry as staged (install.sh only replaces its
+      # Exec and TryExec lines; the test below validates the installed one)
+      - name: Validate the desktop entry
+        run: |
+          out=$(desktop-file-validate "$OXT_ROOT/linux/oxt-beyond.desktop" 2>&1) || { echo "$out"; exit 1; }
+          echo "${out:-desktop-file-validate: no errors, warnings or hints}"
+          if printf '%s\n' "$out" | grep -E 'error:|warning:'; then exit 1; fi
+
+      # The launcher with a stand-in engine (missing libraries, the browser
+      # switch, links), then install.sh and uninstall.sh in scratch home
+      # folders: the files they add and remove, the installed engine run
+      # through ~/.local/bin/oxt-beyond, and the desktop entry
+      # (desktop-file-validate) with a plain and an awkward install path
+      - name: Test the launcher and the install scripts
+        timeout-minutes: 30
+        run: |
+          python3 tools/ci/test_linux_package.py --root "$OXT_ROOT" --require-desktop-tools \
+            2>&1 | tee "$RUNNER_TEMP/logs/test-linux-package.log"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: OXT-Beyond-linux-x86_64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+          # The files are compressed already
+          compression-level: 0
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-logs-linux-x86_64
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
+          retention-days: 14

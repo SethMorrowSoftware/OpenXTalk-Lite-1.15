@@ -446,6 +446,8 @@ on TestLoadExternal pExternal
       put "bundle" into tExtension
    else if the platform is "linux" then
       put "so" into tExtension
+   else if the platform is "Win32" then
+      put "dll" into tExtension
    end if
 
    put TestGetBinariesPath() into tBinariesPath
@@ -619,7 +621,9 @@ end TestRepeat
 command TestRunStack pOptions, pStackFilePath, pArgs
 	local tEnginePath
 	set the itemDelimiter to ":"
-	put item 2 of the address into tEnginePath
+	-- The address is <host>:<engine path>; on Windows the path has a colon
+	-- after its drive letter
+	put item 2 to -1 of the address into tEnginePath
 
 	local tCommand
 	put format("\"%s\" %s \"%s\" %s", tEnginePath, pOptions, pStackFilePath, pArgs) into tCommand
@@ -748,7 +752,45 @@ command TestEnsureJVM
          put tPath into $JAVA_HOME
       end if
    end if
+
+   -- Without a Java runtime the engine can load, the test is skipped
+   switch the platform
+      case "MacOS"
+         -- the engine loads Java from JAVA_HOME
+         if $JAVA_HOME is empty or there is not a folder $JAVA_HOME then
+            throw "SKIP no Java runtime found (JAVA_HOME is empty or names no folder)"
+         end if
+         break
+      case "Linux"
+         -- the engine loads libjvm.so by its name alone, without looking in
+         -- JAVA_HOME
+         if not __LinkerFindsLibJVM() then
+            throw "SKIP no Java runtime the engine can load: on Linux it needs libjvm.so in a folder of LD_LIBRARY_PATH"
+         end if
+         break
+   end switch
 end TestEnsureJVM
+
+-- Whether the dynamic linker finds libjvm.so by its name: in a folder of
+-- LD_LIBRARY_PATH (as it was when the engine started) or in its cache,
+-- which also has the libraries of the system's own library folders
+private function __LinkerFindsLibJVM
+   local tFolders
+   put $LD_LIBRARY_PATH into tFolders
+   replace ":" with return in tFolders
+   repeat for each line tFolder in tFolders
+      if tFolder is not empty and there is a file (tFolder & "/libjvm.so") then
+         return true
+      end if
+   end repeat
+   -- ldconfig -p lists the cache, a library a line: "libjvm.so (...) => path"
+   repeat for each line tLine in shell("/sbin/ldconfig -p")
+      if word 1 of tLine is "libjvm.so" then
+         return true
+      end if
+   end repeat
+   return false
+end __LinkerFindsLibJVM
 
 command TestPropRoundTrip pObjectType, pProperty, pValues
    local tStack
