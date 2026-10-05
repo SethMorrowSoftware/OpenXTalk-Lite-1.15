@@ -247,7 +247,8 @@
 						],
 						'include_dirs':
 						[
-							'/tmp/livecode-build/java-headers',
+							'<(javahome)/include',
+							'<(javahome)/include/darwin',
 						],
 						'sources':
 						[
