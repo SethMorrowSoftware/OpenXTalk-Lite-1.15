@@ -7,6 +7,6 @@
 # These are errors in OpenXTalk Lite 1.15 as Tom Perry left it. They are
 # recorded, not fixed: this repository keeps his code as it is.
 #
-# The macOS ARM standalone builder calls "_internal build MacARM", which the
-# 9.7.1-OXT engine does not have. Nothing in the IDE opens this stack.
-Toolset/palettes/standalone settings/mac-arm-deploy.oxtstack | stack "macOS-ARM standalone builder" > card (id 1002) > button "Build" (id 1009) | line 28 | compile error 494 (near "build")
+# Errors that occur on one platform only are in ide-compile-baseline-
+# <family>.txt next to this file (-windows, -linux, -mac), which the checks
+# add to this one. None occurs on every platform.

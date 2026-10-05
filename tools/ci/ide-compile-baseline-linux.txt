@@ -9,3 +9,9 @@
 # engine then dereferences. OXT-Beyond fixed this in its commit 7ae0d8f0f;
 # here the engine is kept as it is.
 Plugins/Quick Dictionary.livecode | (file) | line 0 | the engine crashed while checking it
+
+# The macOS ARM standalone builder calls "_internal build MacARM", which
+# only Tom Perry's macOS engine has (internal_development.cpp, his macOS
+# version); the Windows version, which Windows and Linux build, does not.
+# Nothing in the IDE opens this stack outside macOS.
+Toolset/palettes/standalone settings/mac-arm-deploy.oxtstack | stack "macOS-ARM standalone builder" > card (id 1002) > button "Build" (id 1009) | line 28 | compile error 494 (near "build")

@@ -222,6 +222,17 @@ if ($completed -and $UpdateBaseline) {
 elseif ($completed) {
     if (-not (Test-Path -LiteralPath $Baseline -PathType Leaf)) { throw "Baseline not found: $Baseline" }
     $expected = @(Read-Lines $Baseline | ForEach-Object { $_.TrimEnd() } | Where-Object { $_ -ne '' -and -not $_.StartsWith('#') })
+    # Errors that occur only on Windows are listed in
+    # ide-compile-baseline-windows.txt next to the shared baseline, as
+    # run_livecode_check.py reads ide-compile-baseline-<family>.txt on Linux
+    # and macOS
+    $supplement = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($Baseline),
+        [System.IO.Path]::GetFileNameWithoutExtension($Baseline) + '-windows' + [System.IO.Path]::GetExtension($Baseline))
+    if (Test-Path -LiteralPath $supplement -PathType Leaf) {
+        $extra = @(Read-Lines $supplement | ForEach-Object { $_.TrimEnd() } | Where-Object { $_ -ne '' -and -not $_.StartsWith('#') })
+        Write-Host "Platform baseline: $supplement ($($extra.Count) entries)"
+        $expected = @($expected) + @($extra)
+    }
     # Compare as multisets with ordinal (case-sensitive) matching
     $remaining = New-Object 'System.Collections.Generic.Dictionary[string,int]' ([System.StringComparer]::Ordinal)
     foreach ($e in $expected) {
