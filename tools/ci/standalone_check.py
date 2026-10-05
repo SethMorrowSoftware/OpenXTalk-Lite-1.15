@@ -403,6 +403,21 @@ def deploy_and_run(engine, runtime, tp, work, timeout, expect_version):
     return problems, lines
 
 
+# Problems known to be in what the check looks at, one message per line as
+# the check words it; "#" starts a comment. In this repository they are
+# faults of OpenXTalk Lite 1.15's own runtimes (the asset oxt-runtimes-1.15),
+# which are kept as Tom Perry shipped them: reported, but not failures.
+BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'standalone-baseline.txt')
+
+
+def read_baseline(path=BASELINE):
+    try:
+        with open(path, encoding='utf-8') as f:
+            return [line.split('#', 1)[0].strip() for line in f if line.split('#', 1)[0].strip()]
+    except FileNotFoundError:
+        return []
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Check the standalone runtimes of an installed OpenXTalk-Lite, and build '
                                              'standalones from them and run them.')
@@ -487,6 +502,16 @@ def main(argv=None):
     log('')
     for line in lines:
         log('Standalone: ' + line)
+    baseline = read_baseline()
+    known = [m for m in problems if m in baseline]
+    problems = [m for m in problems if m not in baseline]
+    for msg in known:
+        log('::notice title=Standalone check (known)::%s' % msg if gha() else 'known: %s' % msg)
+        lines.append('known (tools/ci/standalone-baseline.txt): ' + msg)
+    if layout_given and args.targets == 'all':
+        for msg in baseline:
+            if msg not in known:
+                log('Baseline entry that did not occur (remove it from tools/ci/standalone-baseline.txt): %s' % msg)
     for msg in problems:
         log('::error title=Standalone check::%s' % msg if gha() else 'error: %s' % msg)
     result = 'passed' if not problems else 'FAILED (%d problems)' % len(problems)

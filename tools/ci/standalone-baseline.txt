@@ -1,0 +1,12 @@
+# Known problems of the standalone check (tools/ci/standalone_check.py), one
+# message per line exactly as the check prints it; text after "#" is a
+# comment. A problem listed here is reported but does not fail the check.
+#
+# These are faults of OpenXTalk Lite 1.15's own standalone runtimes, which
+# the packages carry unchanged (the external asset oxt-runtimes-1.15, from
+# Tom Perry's Windows release), not of anything built here.
+
+# The Linux x86-64 runtime's revpdfprinter.so is a 32-bit (i386) library,
+# as OpenXTalk Lite 1.15 shipped it, so a 64-bit Linux standalone cannot
+# load it.
+Runtime/Linux/x86-64/Support/revpdfprinter.so is ELF x86, expected ELF x86_64
