@@ -295,6 +295,11 @@ def check_runtime_folder(tools, tp):
             try:
                 with open(path, 'rb') as f:
                     entries = [x.rstrip('\r') for x in f.read().decode('utf-8').split('\n') if x.strip()]
+            except FileNotFoundError:
+                # Worded without the path on this machine, so that the
+                # baseline can name it
+                problems.append('%s/%s%s is missing' % (r['folder'], sub, lst))
+                continue
             except OSError as e:
                 problems.append('%s/%s%s: %s' % (r['folder'], sub, lst, e))
                 continue
