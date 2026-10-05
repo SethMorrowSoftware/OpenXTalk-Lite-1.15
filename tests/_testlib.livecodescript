@@ -253,14 +253,14 @@ function TestBuildErrorMap pErrorFile, pErrorPrefix, pZerothError
                      && tCode && "change to" && pErrorPrefix & "_UNUSED_" & tCode
             end if
          end if
-         if tErrorMap[tCode] is not empty then
-            throw "duplicate error code" && tCode && "found for" && tError && \
-               "change to" && the number of elements of tErrorMap + 1
-         end if
-         if tCode - 1 is not the number of elements of tErrorMap then
-            throw "incorrect error code" && tCode && "for" && tError && \
-               "change to" && the number of elements of tErrorMap + 1
-         end if
+         -- The engine numbers its errors by their place in the list
+         -- (util/encode_errors.pl), not by the number in the comment, so
+         -- the map does too. In Tom Perry's macOS executionerrors.h the
+         -- comments from EE_MARK_BADSTRING on are one below their place
+         -- (he added macSetIcon's error as 0297 and renumbered only the
+         -- next comment): checking them, as LiveCode's library did, failed
+         -- every test that checks an error there. Elsewhere the two agree.
+         put format("%04d", the number of elements of tErrorMap + 1) into tCode
 
          put tError into tErrorMap[tCode]
          put empty into tCode

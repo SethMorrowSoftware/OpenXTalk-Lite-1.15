@@ -470,6 +470,26 @@ tests that check errors failed in dozens).
   or the Windows one). With both, it stopped at the first duplicate code
   and every test that checks an error failed.
 
+### Test library: error codes by their place in the list, as the engine numbers them
+
+Why: the engine numbers its execution and parse errors by their place in
+`executionerrors.h` and `parseerrors.h` (a C enum, and
+`util/encode_errors.pl` lists the messages in the same order); the
+`{EE-nnnn}` in each comment is only documentation. Tom Perry's macOS
+`executionerrors.h` added macSetIcon's error as 0297 and renumbered only
+the next comment, so two comments say 0298 and the 613 from
+`EE_MARK_BADSTRING` on are one below the number the engine gives that
+error. LiveCode's test library checked the comments against the places
+and stopped at the duplicate, so on macOS every test that checks an
+error failed before it ran. (His file is not changed; the comments stay
+as he left them.)
+
+- `tests/_testlib.livecodescript` (the test harness, not his):
+  `TestBuildErrorMap` numbers each error by its place, as the engine
+  does, and no longer checks the comments' numbers. In his Windows files,
+  and in his macOS `parseerrors.h`, the two agree, so nothing changes
+  there.
+
 ### macOS: the standalone and installer engines link without respring.cpp
 
 Why: on macOS Tom Perry's `desktop.cpp`, which every desktop engine

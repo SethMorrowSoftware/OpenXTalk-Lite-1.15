@@ -53,17 +53,6 @@ lcs: liburl/status_codes: TestStatusCodes
 # --desktop-tests)
 lcs: core/engine/clipboard: TestClipboardMultipleTypes
 
-# Exporting a widget whose kind is not loaded crashes the engine
-# (OXT-Beyond 860e76d31)
-lcs: core/engine/widget: TestExportWidgetOfKindNotLoaded
-
-# baseConvert wraps a number above 4,294,967,295 instead of failing
-# (OXT-Beyond 8b6a18a52); converting to a base below 2 divides by zero in
-# LiveCode Builder (OXT-Beyond cc08c7942)
-lcs: core/math/errors: TestBaseConvertError
-lcb: lcb/stdlib/math: TestBaseConvertFromLimits
-lcb: lcb/stdlib/math: TestBaseConvertToInvalidBase
-
 # The foundLoc of a found chunk was wrong once in a full run, and right when
 # the test ran again
 ? lcs: core/interface/interface: TestFoundLoc

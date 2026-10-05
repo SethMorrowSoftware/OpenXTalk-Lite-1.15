@@ -10,10 +10,6 @@
 # The last second of 1969 does not convert (OXT-Beyond a559db073)
 lcs: core/datetime/datetime: TestConvertDatesBefore1970
 
-# Exporting a widget whose kind is not loaded crashes the engine
-# (OXT-Beyond 860e76d31)
-lcs: core/engine/widget: TestExportWidgetOfKindNotLoaded
-
 # "~" is not $HOME, and "~user/folder" does not resolve (OXT-Beyond
 # 41699b481). "~" is the home folder of the user's /etc/passwd entry
 # (getpwuid in dsklnx.cpp), so TestFilesOfTilde passes where $HOME is that
@@ -21,12 +17,3 @@ lcs: core/engine/widget: TestExportWidgetOfKindNotLoaded
 # job containers (HOME=/github/home)
 ? lcs: core/files/folders: TestFilesOfTilde
 lcs: core/files/folders: TestFilesOfTildeUser
-
-# baseConvert wraps a number above 4,294,967,295 instead of failing
-# (OXT-Beyond 8b6a18a52)
-lcs: core/math/errors: TestBaseConvertError
-lcb: lcb/stdlib/math: TestBaseConvertFromLimits
-
-# Converting to a base below 2 crashes in LiveCode Builder (OXT-Beyond
-# cc08c7942)
-lcb: lcb/stdlib/math: TestBaseConvertToInvalidBase
