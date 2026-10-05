@@ -138,6 +138,12 @@ with OXT-Beyond's shows what OXT-Beyond fixed.
 - The prebuilt libraries and the runtimes are downloaded from OXT-Beyond's
   releases; mirroring them as releases of this repository would remove that
   dependency.
+- **Tom Perry's macOS binary patches are not in any source.** His macOS
+  tree's `apply_openxtalk_patches.sh` writes `patches/patch1.hex` and
+  `patch2.hex` (x86_64 machine code at fixed offsets) into one Intel Debug
+  build of the development and standalone engines. Nothing records what
+  the patched code does, and a build from source cannot reproduce them, so
+  the macOS engines built here do not have them.
 
 ## Releases
 
