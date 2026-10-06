@@ -470,6 +470,24 @@ tests that check errors failed in dozens).
   or the Windows one). With both, it stopped at the first duplicate code
   and every test that checks an error failed.
 
+### Regular expressions follow the caseSensitive on every platform, as in his shipped engines
+
+Why: his macOS tree makes matchText, matchChunk and replaceText follow the
+caseSensitive (false by default, so case-insensitive); his Windows tree
+keeps LiveCode's always case-sensitive matching, and the merge (section 1,
+`exec-strings.cpp` per-platform) gave Windows and Linux that. But his
+shipped Windows release (`openxtalk-lite-1.15-win-noinstaller.7z`, its
+`OpenXTalk-Lite.exe` and x86-64 `Standalone`, linked 2026-06-05, after the
+2026-06-01 Windows engine commit) has his macOS behaviour:
+`matchText("ABC", "abc")` is true there and false in a build of his
+Windows tree. So his Windows binaries were built with this change, and
+every platform now gets it. Measured on both engines; no engine test covers
+it, so the smoke test (`tools/ci/smoke-test.livecodescript`) now checks it,
+and his shipped engine passes that check.
+
+- `engine/src/exec-strings.cpp`: his macOS version, on every platform (the
+  file no longer has OXT-TOM regions).
+
 ### Test library: error codes by their place in the list, as the engine numbers them
 
 Why: the engine numbers its execution and parse errors by their place in

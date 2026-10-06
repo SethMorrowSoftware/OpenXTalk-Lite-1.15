@@ -64,3 +64,7 @@ prebuilt/cef-sha1sums text eol=lf
 *.zip binary
 
 
+
+# Files of Tom Perry's release, kept byte for byte (see the README.md there)
+Installer/openxtalk-lite/from-tom-release/** -text
+Installer/openxtalk-lite/from-tom-release/README.md text

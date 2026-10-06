@@ -407,6 +407,13 @@ if (-not (Test-Path -LiteralPath (Join-Path $StageDir $ExeName) -PathType Leaf))
     throw "The staged folder has no $ExeName ($StageDir)."
 }
 
+# Tom Perry's release has his icons and version information in its
+# OpenXTalk-Lite.exe, which he wrote in after the build; the staged engine
+# gets the same resources, from Installer\openxtalk-lite\from-tom-release
+# (tools/oxt/win_resources.py, which checks the result)
+$code = Invoke-Python @((Join-Path $RepoRoot 'tools\oxt\win_resources.py'), 'apply', (Join-Path $StageDir $ExeName))
+if ($code -ne 0) { throw "tools/oxt/win_resources.py failed with exit code $code" }
+
 $PortableZipName = "$PackageRoot-$Platform-portable.zip"
 $BinZipName = "$PackageRoot-$Platform-binaries.zip"
 $SymZipName = "$PackageRoot-$Platform-symbols.zip"

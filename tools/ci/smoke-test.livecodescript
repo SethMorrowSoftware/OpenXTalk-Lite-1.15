@@ -99,6 +99,14 @@ on startup
       check "arrays", tArray["k"] is "x" and the keys of tArray is "k", the keys of tArray
       get matchText("abc123def", "([0-9]+)", tNumber)
       check "regular expressions (PCRE)", it and tNumber is "123", tNumber
+      -- matchText, matchChunk and replaceText follow the caseSensitive in
+      -- Tom Perry's engines (his shipped Windows 1.15 and his macOS tree;
+      -- CHANGES-FROM-TOM.md), which is false by default
+      set the caseSensitive to false
+      check "regular expressions follow the caseSensitive (false)", matchText("ABC", "abc") and replaceText("ABC", "b", "x") is "AxC", matchText("ABC", "abc") && replaceText("ABC", "b", "x")
+      set the caseSensitive to true
+      check "regular expressions follow the caseSensitive (true)", not matchText("ABC", "abc"), matchText("ABC", "abc")
+      set the caseSensitive to false
       put "hello hello hello hello hello" into tData
       check "compress (zlib)", decompress(compress(tData)) is tData, the number of bytes in compress(tData) & " bytes compressed"
       get binaryDecode("H*", messageDigest("abc", "SHA-256"), tHex)

@@ -132,6 +132,41 @@ with OXT-Beyond's shows what OXT-Beyond fixed.
   the asset
   [`oxt-runtimes-1.15`](https://github.com/SethMorrowSoftware/OpenXTalk-Beyond/releases/tag/runtimes-1.15).
 
+### Compared with Tom Perry's release
+
+The Windows package was compared file by file with his own release,
+`openxtalk-lite-1.15-win-noinstaller.7z`, and his shipped engine was run
+through the same checks as ours. The results match: the same engine test
+results test for test, the same IDE compile result, the same smoke test,
+identical command, function, property and error tables, and identical
+control rendering.
+
+- **As in his release:** the whole IDE (Toolset, Plugins, Resources,
+  Documentation), `.version`, `.buildnumber` (202605052228), `about.dat`,
+  `edition.txt`, and his runtimes for Windows x86-32, Linux and Android.
+  On Windows also his `Ext` folder (the mergExt libraries his IDE loads)
+  and his engine's icon and version information. Both come from
+  [`Installer/openxtalk-lite/from-tom-release`](Installer/openxtalk-lite/from-tom-release/README.md),
+  because no source tree of his has them.
+- **Built here from his source rather than copied:** the engines, externals,
+  toolchain and compiled extension modules, and the Windows x86-64
+  standalone runtime. His release's x86-64 runtime externals were
+  LiveCode's 2021 builds (SQLite 3.34.0). The ones here are built from his
+  tree, with SQLite 3.51.1, the same as his IDE's own database driver.
+- **Not carried:** ten `Toolchain/modules/lci` interfaces of LiveCode
+  commercial modules that nothing here uses, his `test.db` and his
+  `OpenXTalk Lite.lnk` shortcut. `Ext` is also left out of the macOS and
+  Linux packages (see the folder's README).
+- **Different on purpose:** the macOS app's bundle identifier,
+  `io.github.sethmorrowsoftware.openxtalk-lite` (his app kept LiveCode's
+  `com.runrev.livecode`), and the Windows installer, which his release did
+  not have.
+- **Linux:** his release has his own 9.7.1-OXT Linux x86-64 standalone
+  engine, built with GTK 3, WebKitGTK and GStreamer and without CEF. Its
+  source is the Linux 1.15 source still to be imported. Until then, the
+  Linux packages here build his Windows tree with LiveCode's Linux port
+  (a CEF browser and an mplayer player).
+
 ### Not done yet
 
 - **No 32-bit Windows build.** LiveCode's 32-bit prebuilt libraries are not

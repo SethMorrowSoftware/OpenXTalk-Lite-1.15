@@ -139,8 +139,11 @@ stage folder itself except on macOS):
                (LINUX_DESKTOP).
 
 The build number is --build-number, else the environment variable
-OXT_BUILD_NUMBER, else the current UTC time as YYYYMMDDHHMM. ide/.buildnumber
-in the repository is a placeholder.
+OXT_BUILD_NUMBER, else the current UTC time as YYYYMMDDHHMM. It identifies
+the CI build (the macOS CFBundleVersion and the long version string); the
+IDE's own .buildnumber is Tom Perry's ide/.buildnumber unchanged
+(202605052228 for 1.15), which his IDE shows and his updater compares, as
+in his release.
 
 A warning says when the stage path has a folder name that makes the engine
 run the IDE in repository mode (see repository_mode_trap): a package must
@@ -446,11 +449,17 @@ def _linux(arch):
 # preferences, document bindings and permissions apart from LiveCode's
 # (com.runrev.livecode) and from any other OpenXTalk build.
 MAC_BUNDLE_ID = 'io.github.sethmorrowsoftware.openxtalk-lite'
+# The app's name as macOS shows it, Tom Perry's (his apply_openxtalk_patches.sh
+# and build scripts set CFBundleName to it)
+MAC_APP_NAME = 'OpenXTalk Lite'
 MAC_ICON = PRODUCT + '.icns'
 # Tom Perry's macOS app icon (patches/OpenXTalk-lite_1024.icns in his macOS
 # source trees, which his integrate_openxtalk_icon.sh installed as the app
 # icon), copied unchanged
 MAC_ICON_FILE = 'Installer/openxtalk-lite/branding/OpenXTalk-Lite.icns'
+# Files of Tom Perry's Windows release (openxtalk-lite-1.15-win-noinstaller.7z)
+# that no source tree has, kept unchanged (see the README.md there)
+TOM_RELEASE_DIR = 'Installer/openxtalk-lite/from-tom-release'
 # The document types the app registers: (UTI, extension, name, the
 # types it conforms to). A script-only stack is plain text, so .oxtscript
 # conforms to public.script (source code, plain text: Quick Look and text
@@ -497,8 +506,9 @@ def mac_info_plist(plist, version, build_number, archs, executable, minimum):
 
       CFBundleExecutable      the renamed executable
       CFBundleIdentifier      MAC_BUNDLE_ID (LiveCode's is com.runrev.livecode)
-      CFBundleName,           OpenXTalk-Lite
-      CFBundleDisplayName
+      CFBundleName,           MAC_APP_NAME, "OpenXTalk Lite", as Tom Perry's
+      CFBundleDisplayName     macOS app scripts set it (the menu bar and
+                              the Dock show it)
       CFBundleShortVersionString
                               ide/.version, as the user sees it
       CFBundleVersion         the build number (mac_bundle_version):
@@ -548,8 +558,8 @@ def mac_info_plist(plist, version, build_number, archs, executable, minimum):
     out.update({
         'CFBundleExecutable': executable,
         'CFBundleIdentifier': MAC_BUNDLE_ID,
-        'CFBundleName': PRODUCT,
-        'CFBundleDisplayName': PRODUCT,
+        'CFBundleName': MAC_APP_NAME,
+        'CFBundleDisplayName': MAC_APP_NAME,
         'CFBundleShortVersionString': version,
         'CFBundleVersion': mac_bundle_version(build_number),
         'CFBundleGetInfoString': info,
@@ -816,7 +826,8 @@ INTENDED_MISSING = tuple(
       'from the stock LiveCode 9.6.3 Toolchain; this repository compiles '
       'engine/src/license.lcb into lc-compile instead (engine_syntax_only_lcb_files) '
       'and writes no .lci for it'),
-     ('Ext/**', 'the mergExt collection is not redistributed (licence unclear)')])
+     ('Ext/**', "macOS and Linux only: Tom Perry's Ext folder (Installer/openxtalk-lite/from-tom-release) "
+      "goes into the Windows package; his macOS builds in it are i386 and x86_64 only")])
 
 
 class PackageError(Exception):
@@ -830,7 +841,7 @@ class Item(object):
     def __init__(self, target, origin, source=None, data=None, member=None, asset=None, note='', link=None,
                  executable=False):
         self.target = target      # installed path, "/" separators
-        self.origin = origin      # ide, build, generated, licence, asset, xtalk, desktop
+        self.origin = origin      # ide, build, generated, licence, asset, xtalk, desktop, tom
         self.source = source      # file on disk (ide, build, licence, xtalk)
         self.data = data          # bytes (generated, licence, desktop, the xtalk stamp)
         self.member = member      # zip member name (asset)
@@ -1079,6 +1090,18 @@ def plan_engine(pl):
             else:
                 pl.generated(p.engine + '/Contents/Resources/' + MAC_ICON, data,
                              'the app icon (CFBundleIconFile), %s' % MAC_ICON_FILE)
+        # The document icon that Tom Perry's Info.plist names for his
+        # "OpenXTalk Stack" document type (CFBundleTypeIconFile), which the
+        # build does not copy into the app: his engine/rsrc/OpenXTalkDoc.icns
+        doc_icon = 'engine/rsrc/OpenXTalkDoc.icns'
+        try:
+            with open(layout.native(pl.repo, doc_icon), 'rb') as f:
+                data = f.read()
+        except OSError as e:
+            pl.problems.append('cannot read %s: %s' % (doc_icon, e))
+        else:
+            pl.generated(p.engine + '/Contents/Resources/OpenXTalkDoc.icns', data,
+                         'the document icon of his OpenXTalk Stack type, %s' % doc_icon)
     for rel, target in p.engine_support:
         pl.output(target, rel, note)
 
@@ -1214,11 +1237,21 @@ def plan(repo, bin_dir, build_number, assets, xtalk=None, platform=None, notes=N
     pairs, ide_problems = layout.plan_assemble(repo, p.ide_include)
     pl.problems.extend('IDE: ' + x for x in ide_problems)
     for target, repo_path in pairs:
-        if target == '.buildnumber':
-            continue
         pl.add(Item(tools + target, 'ide', source=layout.native(repo, repo_path), note=repo_path))
-    pl.generated(tools + '.buildnumber', (build_number + '\n').encode('ascii'),
-                 'build number (ide/.buildnumber is a placeholder)')
+
+    # Tom Perry's Ext folder (the mergExt collection: blur, mergJSON,
+    # mergMarkdown, mergMicrophone), which his Windows release ships and his
+    # IDE loads at startup, byte for byte from his release
+    # (TOM_RELEASE_DIR). Windows only: his macOS builds in it are i386 and
+    # x86_64 only, and the Linux ones were never tested with this IDE.
+    if p.family == 'windows':
+        ext_root = layout.native(repo, TOM_RELEASE_DIR + '/Ext')
+        for dirpath, dirnames, filenames in os.walk(ext_root):
+            dirnames.sort()
+            for name in sorted(filenames):
+                rel = os.path.relpath(os.path.join(dirpath, name), ext_root).replace(os.sep, '/')
+                pl.add(Item(tools + 'Ext/' + rel, 'tom', source=os.path.join(dirpath, name),
+                            note=TOM_RELEASE_DIR + '/Ext/' + rel))
 
     # Build outputs
     plan_build(pl)
@@ -1362,6 +1395,8 @@ def write_stage(stage, items, folders, eol, log, platform=None):
                         f.write(data)
                 else:
                     shutil.copyfile(it.source, dst)
+            elif it.origin == 'tom':
+                shutil.copyfile(it.source, dst)    # byte for byte, as in his release
             elif it.origin == 'build':
                 if it.link is not None:
                     os.symlink(it.link, dst)
@@ -1663,6 +1698,8 @@ def compare(stage, items, ref, no_assets, report=None, no_xtalk=False, platform=
             status, why = 'intended addition', 'a file of the runtimes built from this repository (%s)' % it.note
         elif it.origin == 'ide':
             status, why = 'IDE change: added', it.note
+        elif it.origin == 'tom':
+            status, why = 'intended addition', "Tom Perry's release (%s)" % it.note
         elif it.origin == 'xtalk':
             status, why = 'intended addition', 'xTalk Suite extension (%s)' % it.note
         else:
