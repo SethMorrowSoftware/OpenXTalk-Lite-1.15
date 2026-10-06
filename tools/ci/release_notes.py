@@ -61,7 +61,7 @@ LINUX_MIN = 'Linux x86-64 (glibc 2.31 or later)'
 INTRO = '''\
 OpenXTalk Lite {version} for Windows, macOS and Linux, built from Tom Perry's source{tag_text}.
 
-This is OpenXTalk Lite {version} as Tom Perry left it (the IDE and his 9.7.1-OXT engine), compiled and tested by this repository's CI. Nothing in it was fixed or changed, except what current compilers need to build it; see "About this release" below.
+This is OpenXTalk Lite {version} as Tom Perry left it (the IDE and his 9.7.1-OXT engine), compiled and tested by this repository's CI. Nothing in it was fixed or improved: it differs from his source only where current compilers and systems need it to build, and where his own shipped 1.15 release differs from his source, it follows his release; see "About this release" below.
 
 Download from the release page, under Assets:
 - {windows_min}: {root}-win-x86_64-setup.exe
@@ -93,7 +93,7 @@ One universal app, `OpenXTalk-Lite.app`, with Tom Perry's macOS engine work (his
 **Opening it for the first time.** The app is signed ad hoc: it is not signed with an Apple Developer ID and not notarized by Apple, so macOS does not open a downloaded copy until you allow it. You do this once. On macOS 15 Sequoia and later:
 
 1. Double-click OpenXTalk-Lite. macOS says that it was not opened; click **Done** (not *Move to Trash*).
-2. Open **System Settings > Privacy & Security** and scroll down to *Security*. Next to "OpenXTalk-Lite was blocked to protect your Mac", click **Open Anyway**.
+2. Open **System Settings > Privacy & Security** and scroll down to *Security*. Next to the message that the app was blocked to protect your Mac, click **Open Anyway**.
 3. Confirm with **Open Anyway** and your password (or Touch ID).
 
 On macOS 13 and 14, Control-click the app in Finder, choose *Open* and then *Open* again; on macOS 12 and earlier, the button is in *System Preferences > Security & Privacy > General*. Or, in Terminal, remove the quarantine flag that the browser set on the download:
@@ -124,8 +124,9 @@ Needs 64-bit x86 Linux with glibc 2.31 or later (Ubuntu 20.04, Debian 11, Fedora
 
 Made by the "Release" workflow (`.github/workflows/release.yml`){commit}, which builds and tests all three platforms and publishes the release only when every package has passed.
 
-- **The code** is Tom Perry's OpenXTalk Lite 1.15: the OpenXTalk Lite IDE 1.15 and his 9.7.1-OXT engine work, his Windows and macOS working copies merged into one tree (the tag `tom-perry-1.15-merged`), on LiveCode Community 9.7 develop. The commits after it change only what is needed to build it on current compilers and systems, and the CI, tests and packaging. `CHANGES-FROM-TOM.md` lists every difference from his source and why, and the "Pristine guard" workflow checks that the list is complete.
+- **The code** is Tom Perry's OpenXTalk Lite 1.15: the OpenXTalk Lite IDE 1.15 and his 9.7.1-OXT engine work, his Windows and macOS working copies merged into one tree (the tag `tom-perry-1.15-merged`), on LiveCode Community 9.7 develop. The commits after it change only what is needed to build it on current compilers and systems, follow his shipped release where it differs from his source (the regular expressions of his Windows engine follow the caseSensitive, as in his macOS tree), and add the CI, tests and packaging. `CHANGES-FROM-TOM.md` lists every difference from his source and why, and the "Pristine guard" workflow checks that the list is complete.
 - **The tests** are known to fail in places: `tools/ci/*-baseline*.txt` records each failure of Tom Perry's code, which is kept as it is.
+- **From his release:** the Windows package also has his `Ext` folder (the mergJSON, mergMarkdown, blur and mergMicrophone externals his IDE loads) and his `OpenXTalk-Lite.exe` icon and version information, which no source tree of his has (`Installer/openxtalk-lite/from-tom-release`). Every package has his `.buildnumber`.
 - **The standalone runtimes** for the platforms other than each package's own (Windows x86, Linux and Android) are OpenXTalk Lite 1.15's own, unchanged (the asset `oxt-runtimes-1.15`).
 - **The prebuilt libraries** are LiveCode's own on Windows (OpenSSL 1.1.1g, curl 7.51.0, ICU 58.2, CEF 74), and built from source with the same versions on macOS and Linux (OpenSSL 1.1.1w there: 1.1.1g cannot be linked on arm64).
 
