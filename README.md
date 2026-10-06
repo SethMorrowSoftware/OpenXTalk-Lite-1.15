@@ -15,9 +15,6 @@ which continues the work, can be compared against.
 
 ## What is in it
 
-Tom Perry left two working copies of his 9.7.1-OXT engine, both clones of
-LiveCode Community 9.7 develop: one for Windows, with the OpenXTalk Lite
-IDE 1.15, and one for macOS (Apple Silicon, holding his Intel work too).
 They are imported here as he left them, on LiveCode's own history, and
 merged into one tree from which **each platform builds his own code for
 it**: an engine file both platforms compile holds both of his versions,
