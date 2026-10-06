@@ -73,6 +73,9 @@ case "$1" in
 		# match: pinning the two suites above priority 1000 lets apt move
 		# those back to the release's versions.
 		run_in "sed -i -e '/bullseye-security/d' /etc/apt/sources.list"
+		# A mirror that drops a connection (as deb.debian.org now and
+		# then does) fails the whole install without retries
+		run_in "echo 'Acquire::Retries \"5\";' > /etc/apt/apt.conf.d/80-oxt-retries"
 		run_in "printf 'Package: *\nPin: release n=bullseye\nPin-Priority: 1001\n\nPackage: *\nPin: release n=bullseye-updates\nPin-Priority: 1001\n' > /etc/apt/preferences.d/oxt-bullseye-release"
 		if ! run_in 'apt-get update' ; then
 			run_in "sed -i -e 's|deb.debian.org|archive.debian.org|' /etc/apt/sources.list && apt-get update"

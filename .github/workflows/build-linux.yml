@@ -137,6 +137,8 @@ jobs:
     steps:
       - name: Install build tools and headers
         run: |
+          # Retry a download that a mirror drops instead of failing the job
+          echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-oxt-retries
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential gcc g++ make perl bison flex gawk pkg-config \
@@ -722,6 +724,7 @@ jobs:
       # launcher's hint does.
       - name: Install the runtime libraries and desktop tools
         run: |
+          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-oxt-retries > /dev/null
           sudo apt-get update
           # mplayer, Xvfb and xauth: the browser and player check
           pkgs=(desktop-file-utils shared-mime-info xz-utils mplayer xvfb xauth)

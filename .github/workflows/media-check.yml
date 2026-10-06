@@ -93,6 +93,7 @@ jobs:
       - name: Install mplayer, Xvfb and the runtime libraries
         if: runner.os == 'Linux'
         run: |
+          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-oxt-retries > /dev/null
           sudo apt-get update
           pkgs=(mplayer xvfb xauth)
           while read -r soname use deb rpm rest; do
